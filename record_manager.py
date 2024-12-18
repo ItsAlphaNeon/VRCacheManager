@@ -37,10 +37,17 @@ class RecordManager:
                         return
         raise ValueError("World ID not found in records")
 
-    def remove_record(self, key):
-        if key in self.records:
-            del self.records[key]
-            self._save_records()
+    def remove_record(self, world_id):
+        for key, value in self.records.items():
+            if key.startswith("Worlds"):
+                for world in value:
+                    if world['World ID'] == world_id:
+                        value.remove(world)
+                        if len(value) == 0:
+                            del self.records[key]
+                        self._save_records()
+                        return
+        raise ValueError("World ID not found in records")
 
     def read_record(self, key):
         return self.records.get(key, None)
@@ -53,12 +60,13 @@ class RecordManager:
     
     
     def verify_integrity(self, directory):
-        keys_to_remove = []
+        missing_ids = []
         for key, value in self.records.items():
             if key.startswith("Worlds"):
                 for world in value:
-                    if not os.path.exists(os.path.join(directory, world['World ID'])):
-                        keys_to_remove.append(key)
+                    world_id = world['World ID']
+                    if not os.path.exists(os.path.join(directory, world_id)):
+                        missing_ids.append(world_id)
                         break
-        for key in keys_to_remove:
-            self.remove_record(key)
+        for world_id in missing_ids:
+            self.remove_record(world_id)

@@ -269,7 +269,11 @@ class QtGUIManager(QWidget):
                 QMessageBox.StandardButton.No,
             )
             if reply == QMessageBox.StandardButton.Yes:
-                self.file_list.takeItem(self.file_list.row(selected_item))
+                # PURGE IT 
+                self.record_manager.remove_record(selected_item.world_id)
+                os.remove(f"./assetbundles/{selected_item.world_id}") # Remove the asset bundle 
+                os.remove(f"./assetbundles/thumbnails/{selected_item.world_id}.png") # Remove the thumbnail
+                self.reload_list()
 
     def view_file_info(self):
         selected_item = self.file_list.currentItem()
