@@ -24,7 +24,7 @@ class RecordManager:
                 self.records[key] = [self.records[key]]
             self.records[key].append(value)
         else:
-            self.records[key] = value
+            self.records[key] = [value]
         self._save_records()
 
     def remove_record(self, key):

@@ -278,6 +278,7 @@ class QtGUIManager(QWidget):
                 print("Saved VRChat executable path.")
 
     def prompt_for_world_url(self, new_data_path):
+        self.activateWindow()  # Focus the window
         url, ok = QInputDialog.getText(
             self, "Enter World URL", "Enter the URL for the newly downloaded world:"
         )
