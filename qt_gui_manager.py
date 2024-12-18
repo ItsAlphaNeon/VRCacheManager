@@ -345,9 +345,13 @@ class QtGUIManager(QWidget):
         world_name = world_info.get("World Name", "Unknown")
         world_author = world_info.get("World Author", "Unknown")
 
-        list_item_widget = ListItemWidget(thumbnail_path, world_name, world_author, world_info["World ID"])
+        world_id = world_info.get("World ID", "Unknown ID")
+        list_item_widget = ListItemWidget(thumbnail_path, world_name, world_author, world_id)
         list_item = QListWidgetItem(self.file_list)
         list_item.setSizeHint(list_item_widget.sizeHint())
+        
+        # Add the world id
+        list_item.world_id = world_info["World ID"]
 
         # Add the item and set the widget within the loop
         self.file_list.addItem(list_item)

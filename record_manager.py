@@ -60,13 +60,16 @@ class RecordManager:
     
     
     def verify_integrity(self, directory):
-        missing_ids = []
-        for key, value in self.records.items():
-            if key.startswith("Worlds"):
-                for world in value:
-                    world_id = world['World ID']
-                    if not os.path.exists(os.path.join(directory, world_id)):
-                        missing_ids.append(world_id)
-                        break
-        for world_id in missing_ids:
-            self.remove_record(world_id)
+        worlds = self.read_record("Worlds")
+        illegal_entries = []
+        for world in worlds:
+            try:
+                if not os.path.exists(os.path.join(directory, world['World ID'])):
+                    self.remove_record(world['World ID'])
+            except:
+                # illegal entry, doesn't have a world id
+                illegal_entries.append(world)
+        if illegal_entries:
+            for entry in illegal_entries:
+                worlds.remove(entry)
+            self._save_records()
