@@ -16,14 +16,14 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from cache_event_handler import CacheEventHandler
 from asset_bundle_manager import AssetBundleManager
-import recordmanager as RecordManager
+import record_manager as RecordManager
 from worlddata import get_world_info
 from watchdog.observers import Observer
 import json
 import threading
 
 
-class ArchiveManager(QWidget):
+class QtGUIManager(QWidget):
     def __init__(self):
         super().__init__()
 

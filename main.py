@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from archive_manager import ArchiveManager
+from qt_gui_manager import QtGUIManager
 from PyQt6.QtWidgets import QSystemTrayIcon
 from PyQt6.QtGui import QIcon, QPixmap
 import ctypes
@@ -21,6 +21,6 @@ if __name__ == "__main__":
     appIcon = QIcon(pixmap)
     app.setWindowIcon(appIcon)
     
-    ex = ArchiveManager()
+    ex = QtGUIManager()
     ex.show()
     sys.exit(app.exec())
