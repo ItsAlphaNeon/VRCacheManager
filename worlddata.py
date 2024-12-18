@@ -5,12 +5,18 @@ import re
 
 FILE_NAME = "output.html"
 DIRECTORY = "./webscraping/"
+THUMBNAIL_DIRECTORY = "./assetbundles/thumbnails/"
 
 def vrcw_lookup(id): # Ex: wrld_bdba4b66-caca-4ae7-ad11-0336608f7111
     url = f"https://en.vrcw.net/world/detail/{id}"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
     }
+    # Initialize variables to store the world data
+    world_name = None
+    description = None
+    author = None
+    thumbnail = None
     try:
         response = requests.get(url, headers=headers, verify=False)
         response.raise_for_status()  # Check if the request was successful
@@ -42,11 +48,20 @@ def vrcw_lookup(id): # Ex: wrld_bdba4b66-caca-4ae7-ad11-0336608f7111
                 print(f"World author: {author}")
             else:
                 print("Author not found")
-            # print ("/////////////////////////////////////////////////////////")
-            # print("World Name: ", world_name + "\n" + "World Description: ", description + "\n" + "World Author: ", author)
-            # print ("/////////////////////////////////////////////////////////")
             
-            return {"World ID": id, "World Name": world_name, "World Description": description, "World Author": author}
+            thumbnail_url = f"https://www.vrcw.net/storage/worlds/{id}.png"
+            thumbnail_response = requests.get(thumbnail_url, headers=headers, verify=False)
+            thumbnail_response.raise_for_status()
+            # Save the thumbnail to a file
+            os.makedirs(THUMBNAIL_DIRECTORY, exist_ok=True) 
+            thumbnail_path = os.path.join(THUMBNAIL_DIRECTORY, f"{id}.png")
+            with open(thumbnail_path, "wb") as file:
+                file.write(thumbnail_response.content)
+            print(f"Thumbnail saved to {thumbnail_path}")  # debug, will remove later
+            thumbnail = thumbnail_path
+            
+            
+            return {"World ID": id, "World Name": world_name, "World Description": description, "World Author": author, "Thumbnail Path": thumbnail}
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
 
