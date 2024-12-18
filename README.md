@@ -9,7 +9,7 @@ This project is intended for those who would like to view VRChat worlds without 
 - **Rename Files**: Rename cache files for better organization.
 - **Delete Files**: Delete unwanted cache files.
 - **View File Information**: View detailed information about cache files.
-- **Replace Error Worlds**: Replace error worlds with valid ones.
+- **Replace Error World**: Replace the ErrorWorld with a custom world, allowing you to view worlds without EAC.
 - **Monitor Cache Directory**: Automatically detect new files in the VRChat cache directory.
 - **Launch VRChat**: Launch VRChat directly from the application.
 - **Web Scrape World Data**: Fetch world data from the web.
