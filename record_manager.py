@@ -26,6 +26,16 @@ class RecordManager:
         else:
             self.records[key] = [value]
         self._save_records()
+    
+    def rename_record(self, world_id, new_name):
+        for key, value in self.records.items():
+            if key.startswith("Worlds"):
+                for world in value:
+                    if world['World ID'] == world_id:
+                        world['World Name'] = new_name
+                        self._save_records()
+                        return
+        raise ValueError("World ID not found in records")
 
     def remove_record(self, key):
         if key in self.records:

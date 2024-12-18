@@ -25,8 +25,9 @@ import threading
 
 
 class ListItemWidget(QWidget):
-    def __init__(self, thumbnail_path, world_name, world_author, parent=None):
+    def __init__(self, thumbnail_path, world_name, world_author, world_id, parent=None):
         super(ListItemWidget, self).__init__(parent)
+        self.world_id = world_id  # Assign the world ID
 
         layout = QHBoxLayout(self)
 
@@ -91,10 +92,12 @@ class QtGUIManager(QWidget):
                 world_author = world.get("World Author", "Unknown")
 
                 list_item_widget = ListItemWidget(
-                    thumbnail_path, world_name, world_author
+                    thumbnail_path, world_name, world_author, world["World ID"]
                 )
                 list_item = QListWidgetItem(self.file_list)
                 list_item.setSizeHint(list_item_widget.sizeHint())
+                
+                list_item.world_id = world["World ID"]
 
                 # Add the item and set the widget within the loop
                 self.file_list.addItem(list_item)
@@ -111,7 +114,7 @@ class QtGUIManager(QWidget):
         self.view_btn = QPushButton("View Info")
         self.replace_errorworld_btn = QPushButton("Replace ErrorWorld")
 
-        self.rename_btn.clicked.connect(self.rename_file)
+        self.rename_btn.clicked.connect(lambda: self.rename_file(self.record_manager))
         self.delete_btn.clicked.connect(self.delete_file)
         self.view_btn.clicked.connect(self.view_file_info)
         self.replace_errorworld_btn.clicked.connect(self.replace_errorworld)
@@ -221,16 +224,39 @@ class QtGUIManager(QWidget):
     }
     """
 )
+    def reload_list(self):
+        self.file_list.clear()
+        worlds = self.record_manager.read_record("Worlds")
+        if worlds:
+            for world in worlds:
+                thumbnail_path = world.get(
+                    "Thumbnail Path", "./resources/default_thumbnail.png"
+                )
+                world_name = world.get("World Name", "Unknown")
+                world_author = world.get("World Author", "Unknown")
+
+                list_item_widget = ListItemWidget(
+                    thumbnail_path, world_name, world_author, world["World ID"]
+                )
+                list_item = QListWidgetItem(self.file_list)
+                list_item.setSizeHint(list_item_widget.sizeHint())
+
+                list_item.world_id = world["World ID"]
+
+                # Add the item and set the widget within the loop
+                self.file_list.addItem(list_item)
+                self.file_list.setItemWidget(list_item, list_item_widget)
 
 
-    def rename_file(self):
+    def rename_file(self, record_manager):
         selected_item = self.file_list.currentItem()
         if selected_item:
             new_name, ok = QInputDialog.getText(
-                self, "Rename file", "Enter new name:", text=selected_item.text()
+                self, "Rename World", "Enter new world name:", text=selected_item.text()
             )
             if ok:
-                selected_item.setText(new_name)
+                record_manager.rename_record(selected_item.world_id, new_name)
+                self.reload_list()
 
     def delete_file(self):
         selected_item = self.file_list.currentItem()
@@ -315,7 +341,7 @@ class QtGUIManager(QWidget):
         world_name = world_info.get("World Name", "Unknown")
         world_author = world_info.get("World Author", "Unknown")
 
-        list_item_widget = ListItemWidget(thumbnail_path, world_name, world_author)
+        list_item_widget = ListItemWidget(thumbnail_path, world_name, world_author, world_info["World ID"])
         list_item = QListWidgetItem(self.file_list)
         list_item.setSizeHint(list_item_widget.sizeHint())
 
