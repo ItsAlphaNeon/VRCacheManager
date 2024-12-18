@@ -20,6 +20,7 @@ import recordmanager as RecordManager
 from worlddata import get_world_info
 from watchdog.observers import Observer
 import json
+import threading
 
 
 class ArchiveManager(QWidget):
@@ -267,7 +268,9 @@ class ArchiveManager(QWidget):
                 self, "Error", "Please specify the path to the VRChat executable."
             )
         else:
-            os.system(f'"{self.vrchat_exec_path.text()}/vrchat.exe"') 
+            def launch_vrchat_thread():
+                os.system(f'"{self.vrchat_exec_path.text()}/vrchat.exe"')
+            threading.Thread(target=launch_vrchat_thread).start()
             print("Launching VRChat...")
 
     def closeEvent(self, event):
