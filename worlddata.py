@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import re
 
 FILE_NAME = "output.html"
-DIRECTORY = "./WebScraping/"
+DIRECTORY = "./webscraping/"
 
 def vrcw_lookup(id): # Ex: wrld_bdba4b66-caca-4ae7-ad11-0336608f7111
     url = f"https://en.vrcw.net/world/detail/{id}"
@@ -29,6 +29,7 @@ def vrcw_lookup(id): # Ex: wrld_bdba4b66-caca-4ae7-ad11-0336608f7111
             print(f"World name: {world_name}")
             # Find the world description
             description_tag = soup.find("dt", text="Description")
+            description = None
             if description_tag:
                 description = description_tag.find_next_sibling("dd").text.strip()
                 print(f"World description: {description}")
@@ -45,7 +46,7 @@ def vrcw_lookup(id): # Ex: wrld_bdba4b66-caca-4ae7-ad11-0336608f7111
             # print("World Name: ", world_name + "\n" + "World Description: ", description + "\n" + "World Author: ", author)
             # print ("/////////////////////////////////////////////////////////")
             
-            return {"World Name": world_name, "World Description": description, "World Author": author}
+            return {"World ID": id, "World Name": world_name, "World Description": description, "World Author": author}
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
 

@@ -177,3 +177,6 @@ pyrightconfig.json
 
 WebScraping
 .WebScraping
+assetbundles
+.assetbundles
+records.json
