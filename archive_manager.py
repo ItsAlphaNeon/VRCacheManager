@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QApplication
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from cache_event_handler import CacheEventHandler
 from asset_bundle_manager import AssetBundleManager
 import recordmanager as RecordManager
@@ -44,7 +45,7 @@ class ArchiveManager(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("VRCacheManager")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 800, 400)
 
         main_layout = QHBoxLayout()
         self.record_manager = RecordManager.RecordManager("records.json", "./assetbundles")
@@ -62,10 +63,12 @@ class ArchiveManager(QWidget):
         self.rename_btn = QPushButton("Rename")
         self.delete_btn = QPushButton("Delete")
         self.view_btn = QPushButton("View Info")
+        self.replace_errorworld_btn = QPushButton("Replace ErrorWorld")
 
         self.rename_btn.clicked.connect(self.rename_file)
         self.delete_btn.clicked.connect(self.delete_file)
         self.view_btn.clicked.connect(self.view_file_info)
+        self.replace_errorworld_btn.clicked.connect(self.replace_errorworld)
 
         self.vrchat_exec_path = QLineEdit()
         self.vrchat_exec_browse = QPushButton("Browse...")
@@ -78,6 +81,19 @@ class ArchiveManager(QWidget):
         self.vrchat_cache_browse.clicked.connect(
             lambda: self.browse_file(self.vrchat_cache_path)
         )
+        
+        self.launch_vrchat_btn = QPushButton("Launch VRChat")
+        self.launch_vrchat_btn.clicked.connect(self.launch_vrchat)
+        
+        # Button icons
+        self.rename_btn.setIcon(QIcon("./resources/rename_icon.svg"))
+        self.delete_btn.setIcon(QIcon("./resources/delete_icon.svg"))
+        self.view_btn.setIcon(QIcon("./resources/view_icon.svg"))
+        self.replace_errorworld_btn.setIcon(QIcon("./resources/replace_icon.svg"))
+        self.vrchat_exec_browse.setIcon(QIcon("./resources/browse_icon.svg"))
+        self.vrchat_cache_browse.setIcon(QIcon("./resources/browse_icon.svg"))
+        self.launch_vrchat_btn.setIcon(QIcon("./resources/launch_icon.svg"))
+
 
         if self.record_manager.verify_record("vrchat_exec"):
             self.vrchat_exec_path.setText(
@@ -89,22 +105,29 @@ class ArchiveManager(QWidget):
             )
             self.start_watching(self.vrchat_cache_path.text())
 
-        self.launch_vrchat_btn = QPushButton("Launch VRChat")
-        self.launch_vrchat_btn.clicked.connect(self.launch_vrchat)
-
         control_layout.addWidget(QLabel("Controls:"))
         control_layout.addWidget(self.rename_btn)
         control_layout.addWidget(self.delete_btn)
         control_layout.addWidget(self.view_btn)
+        control_layout.addWidget(self.replace_errorworld_btn)
         control_layout.addStretch()
+        
+        control_layout.addWidget(QLabel("<hr>"))
+        
         control_layout.addWidget(QLabel("VRChat Executable:"))
         self.vrchat_exec_path.setReadOnly(True)
         control_layout.addWidget(self.vrchat_exec_path)
         control_layout.addWidget(self.vrchat_exec_browse)
+        
+        control_layout.addWidget(QLabel("<hr>"))
+        
         control_layout.addWidget(QLabel("VRChat Cache Directory:"))
         self.vrchat_cache_path.setReadOnly(True)
         control_layout.addWidget(self.vrchat_cache_path)
         control_layout.addWidget(self.vrchat_cache_browse)
+        
+        control_layout.addWidget(QLabel("<hr>"))
+        
         control_layout.addWidget(self.launch_vrchat_btn)
 
         main_layout.addWidget(self.file_list, 3)
@@ -170,6 +193,17 @@ class ArchiveManager(QWidget):
         if (selected_item):
             QMessageBox.information(
                 self, "File Info", f"Display Info for {selected_item.text()}"
+            )
+    
+    def replace_errorworld(self):
+        if not self.vrchat_cache_path.text():
+            QMessageBox.warning(
+                self, "Error", "Please specify the path to the VRChat cache directory."
+            )
+        else:
+            # Replace it here!
+            QMessageBox.information(
+                self, "Placeholder", "This feature is not yet implemented."
             )
 
     def browse_file(self, line_edit):
