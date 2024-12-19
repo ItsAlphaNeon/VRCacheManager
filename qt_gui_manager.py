@@ -293,13 +293,39 @@ class QtGUIManager(QWidget):
     def view_file_info(self):
         try:
             selected_item = self.file_list.currentItem()
-            if selected_item:
-                QMessageBox.information(
-                    self, "File Info", f"Display Info for {selected_item.text()}"
+            selected_world_id = selected_item.world_id
+            if selected_world_id:
+            
+                information = self.record_manager.read_record("Worlds")
+                
+                world_info = next((world for world in information if world["World ID"] == selected_world_id), None)
+                if world_info:
+                    worldname = world_info.get("World Name", "Unknown")
+                    worldauthor = world_info.get("World Author", "Unknown")
+                    worlddescription = world_info.get("World Description", "No description available.")
+                    worldid = world_info.get("World ID", "Unknown ID") # If this returns "Unknown ID", something went really wrong
+                else:
+                    self.handle_error("World information not found.")
+                    return
+
+                formatted_info = (
+                    f"<b>Name:</b> {worldname}<br>"
+                    f"<hr>"
+                    f"<b>Author:</b> {worldauthor}<br>"
+                    f"<hr>"
+                    f"<b>Description:</b> {worlddescription}<br>"
+                    f"<hr>"
+                    f"<b>ID:</b> {worldid}"
                 )
+
+                if selected_item:
+                    QMessageBox.information(
+                        self, "World Information", f"{formatted_info}"
+                    )
+            else:
+                self.handle_error("This selection has no ID associated with it. This shouldn't happen.")
         except Exception as e:
             self.handle_error(str(e))
-            raise
 
     def replace_errorworld(self):
         try:
