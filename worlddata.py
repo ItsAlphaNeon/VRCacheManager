@@ -1,7 +1,7 @@
 import os
 import requests
 from bs4 import BeautifulSoup
-import re
+import traceback
 
 FILE_NAME = "output.html"
 DIRECTORY = "./webscraping/"
@@ -20,12 +20,23 @@ def vrcw_lookup(id): # Ex: wrld_bdba4b66-caca-4ae7-ad11-0336608f7111
     try:
         response = requests.get(url, headers=headers, verify=False)
         response.raise_for_status()  # Check if the request was successful
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while fetching the URL: {e}")
+        traceback.print_exc()
+        return None
+
+    try:
         os.makedirs(DIRECTORY, exist_ok=True)  # Create directory if it doesn't exist
         file_path = os.path.join(DIRECTORY, FILE_NAME)
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(response.text)
         print(f"HTML content saved to {file_path}") # debug, will remove later
-        
+    except OSError as e:
+        print(f"An error occurred while saving the HTML content: {e}")
+        traceback.print_exc()
+        return None
+
+    try:
         # This works, extract data from the HTML file
         with open(file_path, "r", encoding="utf-8") as file:
             soup = BeautifulSoup(file, "html.parser")
@@ -48,22 +59,32 @@ def vrcw_lookup(id): # Ex: wrld_bdba4b66-caca-4ae7-ad11-0336608f7111
                 print(f"World author: {author}")
             else:
                 print("Author not found")
-            
-            thumbnail_url = f"https://www.vrcw.net/storage/worlds/{id}.png"
-            thumbnail_response = requests.get(thumbnail_url, headers=headers, verify=False)
-            thumbnail_response.raise_for_status()
-            # Save the thumbnail to a file
-            os.makedirs(THUMBNAIL_DIRECTORY, exist_ok=True) 
-            thumbnail_path = os.path.join(THUMBNAIL_DIRECTORY, f"{id}.png")
-            with open(thumbnail_path, "wb") as file:
-                file.write(thumbnail_response.content)
-            print(f"Thumbnail saved to {thumbnail_path}")  # debug, will remove later
-            thumbnail = thumbnail_path
-            
-            
-            return {"World ID": id, "World Name": world_name, "World Description": description, "World Author": author, "Thumbnail Path": thumbnail}
+    except (OSError, AttributeError) as e:
+        print(f"An error occurred while parsing the HTML content: {e}")
+        traceback.print_exc()
+        return None
+
+    try:
+        thumbnail_url = f"https://www.vrcw.net/storage/worlds/{id}.png"
+        thumbnail_response = requests.get(thumbnail_url, headers=headers, verify=False)
+        thumbnail_response.raise_for_status()
+        # Save the thumbnail to a file
+        os.makedirs(THUMBNAIL_DIRECTORY, exist_ok=True) 
+        thumbnail_path = os.path.join(THUMBNAIL_DIRECTORY, f"{id}.png")
+        with open(thumbnail_path, "wb") as file:
+            file.write(thumbnail_response.content)
+        print(f"Thumbnail saved to {thumbnail_path}")  # debug, will remove later
+        thumbnail = thumbnail_path
     except requests.exceptions.RequestException as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred while fetching the thumbnail: {e}")
+        traceback.print_exc()
+        return None
+    except OSError as e:
+        print(f"An error occurred while saving the thumbnail: {e}")
+        traceback.print_exc()
+        return None
+
+    return {"World ID": id, "World Name": world_name, "World Description": description, "World Author": author, "Thumbnail Path": thumbnail}
 
 # exposed function, returns the world name, description, and author in a dictionary
 def get_world_info(id):
@@ -71,4 +92,4 @@ def get_world_info(id):
     if data:
         return data
     else:
-        return {"Error": "An error occurred while fetching world data."}
+        return None
