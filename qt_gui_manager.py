@@ -22,6 +22,7 @@ from worlddata import get_world_info
 from watchdog.observers import Observer
 import json
 import threading
+import shutil
 
 
 class ListItemWidget(QWidget):
@@ -333,13 +334,29 @@ class QtGUIManager(QWidget):
                 QMessageBox.warning(
                     self, "Error", "Please specify the path to the VRChat cache directory."
                 )
+                print("Error: VRChat cache directory path not specified.")
             else:
-                # Replace it here!
-                QMessageBox.information(
-                    self, "Placeholder", "This feature is not yet implemented."
-                )
+                try:
+                    target_path = os.path.join(self.vrchat_exec_path.text(), "VRChat_Data", "StreamingAssets", "Worlds")
+                    errorworld_path = os.path.join(target_path, "errorworld.vrcw")
+                    print(f"Target path for errorworld.vrcw: {errorworld_path}")
+
+                    if os.path.exists(errorworld_path):
+                        os.remove(errorworld_path)
+                        print(f"Removed existing errorworld.vrcw at {errorworld_path}")
+
+                    selected_world_id = self.file_list.currentItem().world_id
+                    source_path = f"./assetbundles/{selected_world_id}"
+                    shutil.copyfile(source_path, errorworld_path)
+                    print(f"Copied {source_path} to {errorworld_path}")
+                    print("Replaced errorworld.vrcw with the selected world.")
+                except Exception as e:
+                    self.handle_error(str(e))
+                    print(f"Exception occurred while replacing errorworld.vrcw: {str(e)}")
+                    raise
         except Exception as e:
             self.handle_error(str(e))
+            print(f"Exception occurred: {str(e)}")
             raise
 
     def browse_file(self, line_edit):
