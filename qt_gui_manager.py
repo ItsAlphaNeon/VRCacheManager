@@ -1,4 +1,5 @@
 import os
+import sys
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -109,11 +110,15 @@ class QtGUIManager(QWidget):
         self.setLayout(main_layout)
 
         control_layout = QVBoxLayout()
-
         self.rename_btn = QPushButton("Rename")
         self.delete_btn = QPushButton("Delete")
         self.view_btn = QPushButton("View Info")
         self.replace_errorworld_btn = QPushButton("Replace ErrorWorld")
+
+        self.rename_btn.setToolTip("Rename the selected world")
+        self.delete_btn.setToolTip("Delete the selected world")
+        self.view_btn.setToolTip("View information about the selected world")
+        self.replace_errorworld_btn.setToolTip("Replace the error world with the selected world")
 
         self.rename_btn.clicked.connect(lambda: self.rename_file(self.record_manager))
         self.delete_btn.clicked.connect(self.delete_file)
@@ -122,18 +127,28 @@ class QtGUIManager(QWidget):
 
         self.vrchat_exec_path = QLineEdit()
         self.vrchat_exec_browse = QPushButton("Browse...")
+        self.vrchat_exec_browse.setToolTip("Browse for the VRChat executable path")
         self.vrchat_exec_browse.clicked.connect(
             lambda: self.browse_file(self.vrchat_exec_path)
         )
 
         self.vrchat_cache_path = QLineEdit()
         self.vrchat_cache_browse = QPushButton("Browse...")
+        self.vrchat_cache_browse.setToolTip("Browse for the VRChat cache directory")
         self.vrchat_cache_browse.clicked.connect(
             lambda: self.browse_file(self.vrchat_cache_path)
         )
 
         self.launch_vrchat_btn = QPushButton("Launch VRChat")
+        self.launch_vrchat_btn.setToolTip("Launch VRChat application")
         self.launch_vrchat_btn.clicked.connect(self.launch_vrchat)
+
+        # Disable the launch button if the platform is macOS or Linux
+        if sys.platform == "win32":
+            self.launch_vrchat_btn.setEnabled(True)
+        else:
+            self.launch_vrchat_btn.setEnabled(False)
+            self.launch_vrchat_btn.setToolTip("Launching VRChat is only supported on Windows")
 
         # Button icons
         self.rename_btn.setIcon(QIcon("./resources/rename_icon.svg"))
@@ -146,11 +161,11 @@ class QtGUIManager(QWidget):
 
         if self.record_manager.verify_record("vrchat_exec"):
             self.vrchat_exec_path.setText(
-                self.record_manager.read_record("vrchat_exec")
+            self.record_manager.read_record("vrchat_exec")
             )
         if self.record_manager.verify_record("vrchat_cache"):
             self.vrchat_cache_path.setText(
-                self.record_manager.read_record("vrchat_cache")
+            self.record_manager.read_record("vrchat_cache")
             )
             self.start_watching(self.vrchat_cache_path.text())
 
@@ -184,47 +199,51 @@ class QtGUIManager(QWidget):
         self.setLayout(main_layout)
 
         self.setStyleSheet(
-    """
-    QWidget {
-        background-color: #2D2D30;
-        color: #CCCCCC;
-    }
-    QPushButton {
-        background-color: #3A3A3C;
-        color: #FFFFFF;
-        border-radius: 10px;
-        padding: 10px;
-    }
-    QPushButton:hover {
-        background-color: #505052;
-    }
-    QLineEdit {
-        background-color: #3A3A3C;
-        color: #FFFFFF;
-        border-radius: 8px;
-        padding: 5px;
-    }
-    QListWidget {
-        background-color: #2D2D30;
-        border-radius: 5px;
-    }
-    QListWidget::item {
-        background-color: transparent;  /* Use transparent to avoid conflicting effects */
-        color: #CCCCCC;
-    }
-    QListWidget::item:selected {
-        background-color: #505052;  /* Highlight color */
-        color: #FFFFFF;
-    }
-    QLabel {
-        font-weight: bold;
-        background-color: transparent;  /* Ensure QLabel has no explicit color */
-    }
-    QLabel:active {
-        background-color: transparent;  /* Ensure QLabel changes with selection */
-    }
-    """
-)
+            """
+            QWidget {
+            background-color: #2D2D30;
+            color: #CCCCCC;
+            }
+            QPushButton {
+            background-color: #3A3A3C;
+            color: #FFFFFF;
+            border-radius: 10px;
+            padding: 10px;
+            }
+            QPushButton:hover {
+            background-color: #505052;
+            }
+            QPushButton:disabled {
+            background-color: #5A5A5C;
+            color: #888888;
+            }
+            QLineEdit {
+            background-color: #3A3A3C;
+            color: #FFFFFF;
+            border-radius: 8px;
+            padding: 5px;
+            }
+            QListWidget {
+            background-color: #2D2D30;
+            border-radius: 5px;
+            }
+            QListWidget::item {
+            background-color: transparent;  /* Use transparent to avoid conflicting effects */
+            color: #CCCCCC;
+            }
+            QListWidget::item:selected {
+            background-color: #505052;  /* Highlight color */
+            color: #FFFFFF;
+            }
+            QLabel {
+            font-weight: bold;
+            background-color: transparent;  /* Ensure QLabel has no explicit color */
+            }
+            QLabel:active {
+            background-color: transparent;  /* Ensure QLabel changes with selection */
+            }
+            """
+        )
     def reload_list(self):
         try:
             self.file_list.clear()
