@@ -22,6 +22,11 @@ if __name__ == "__main__":
         pixmap.loadFromData(Path(path_to_icon).read_bytes())
         appIcon = QIcon(pixmap)
         app.setWindowIcon(appIcon)
+    else:
+        # Set icon for other platforms
+        path_to_icon = './resources/vrcm.ico'
+        appIcon = QIcon(path_to_icon)
+        app.setWindowIcon(appIcon)
     
     ex = QtGUIManager()
     ex.show()
