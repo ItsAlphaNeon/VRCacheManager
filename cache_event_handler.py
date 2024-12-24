@@ -8,7 +8,7 @@ class CacheEventHandler(FileSystemEventHandler, QObject):
     def __init__(self, manager):
         super().__init__()
         self.manager = manager
-        self.fileCreated.connect(manager.prompt_for_world_url)
+        self.fileCreated.connect(manager.discover_existing_cache)
 
     def on_created(self, event):
         if event.is_directory:

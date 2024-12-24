@@ -96,6 +96,17 @@ class RecordManager:
         except Exception as e:
             print(f"Error verifying record: {e}")
             return False
+    
+    def record_exists(self, world_id):
+        try:
+            for key, value in self.records.items():
+                if key.startswith("Worlds"):
+                    for world in value:
+                        if world['World ID'] == world_id:
+                            return True
+            return False
+        except Exception as e:
+            print(f"Error checking if record exists: {e}")
 
     def verify_integrity(self, directory):
         try:
