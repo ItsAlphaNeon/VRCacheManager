@@ -325,6 +325,9 @@ class QtGUIManager(QWidget):
     def view_file_info(self):
         try:
             selected_item = self.file_list.currentItem()
+            if not selected_item:
+                # No item selected, do nothing
+                return
             selected_world_id = selected_item.world_id
             if selected_world_id:
 
