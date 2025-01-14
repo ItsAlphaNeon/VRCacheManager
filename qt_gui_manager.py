@@ -84,7 +84,7 @@ class QtGUIManager(QWidget):
         # Verify the integrity of the assetbundles directory
         # This also removes any invalid / missing records
         self.record_manager.verify_integrity("assetbundles")
-        
+
         # World list widget
         self.file_list = QListWidget()
 
@@ -126,20 +126,20 @@ class QtGUIManager(QWidget):
         self.replace_errorworld_btn.setToolTip(
             "Replace the error world with the selected world"
         )
-        
+
         # Connect the buttons to their respective functions
         self.rename_btn.clicked.connect(lambda: self.rename_file(self.record_manager))
         self.delete_btn.clicked.connect(self.delete_file)
         self.view_btn.clicked.connect(self.view_file_info)
         self.replace_errorworld_btn.clicked.connect(self.replace_errorworld)
 
-        # VRChat executable path 
+        # VRChat executable path
         # TODO: This currently asks for the path, not the executable itself
         self.vrchat_exec_path = QLineEdit()
         self.vrchat_exec_browse = QPushButton("Browse...")
-        self.vrchat_exec_browse.setToolTip("Browse for the VRChat executable path")
+        self.vrchat_exec_browse.setToolTip("Browse for the VRChat executable")
         self.vrchat_exec_browse.clicked.connect(
-            lambda: self.browse_file(self.vrchat_exec_path)
+            lambda: self.browse_executable(self.vrchat_exec_path)
         )
         # VRChat cache directory
         self.vrchat_cache_path = QLineEdit()
@@ -262,7 +262,7 @@ class QtGUIManager(QWidget):
         # Discover existing cache data
         self.discover_existing_cache()
 
-    def reload_list(self): # clears and re-populates the list
+    def reload_list(self):  # clears and re-populates the list
         try:
             self.file_list.clear()
             worlds = self.record_manager.read_record("Worlds")
@@ -289,7 +289,9 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             raise
 
-    def rename_file(self, record_manager): # Renames the selected world (Not the file itself, just the name in the records)
+    def rename_file(
+        self, record_manager
+    ):  # Renames the selected world (Not the file itself, just the name in the records)
         try:
             selected_item = self.file_list.currentItem()
             if selected_item:
@@ -306,7 +308,9 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             raise
 
-    def delete_file(self): # Deletes the selected world. TODO: Make this delete the thumbnail as well
+    def delete_file(
+        self,
+    ):  # Deletes the selected world. TODO: Make this delete the thumbnail as well
         try:
             selected_item = self.file_list.currentItem()
             if selected_item:
@@ -333,7 +337,9 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             raise
 
-    def view_file_info(self): # Displays information about the selected world in a popup
+    def view_file_info(
+        self,
+    ):  # Displays information about the selected world in a popup
         try:
             selected_item = self.file_list.currentItem()
             if not selected_item:
@@ -386,7 +392,9 @@ class QtGUIManager(QWidget):
         except Exception as e:
             self.handle_error(str(e))
 
-    def replace_errorworld(self): # Replaces the errorworld.vrcw with the selected world
+    def replace_errorworld(
+        self,
+    ):  # Replaces the errorworld.vrcw with the selected world
         try:
             if not self.vrchat_cache_path.text():
                 QMessageBox.warning(
@@ -426,7 +434,7 @@ class QtGUIManager(QWidget):
             print(f"Exception occurred: {str(e)}")
             raise
 
-    def browse_file(self, line_edit): # Opens a file dialog to browse for a file
+    def browse_file(self, line_edit):  # Opens a file dialog to browse for a file
         try:
             directory = QFileDialog.getExistingDirectory(self, "Select Directory")
             if directory:
@@ -443,31 +451,20 @@ class QtGUIManager(QWidget):
         except Exception as e:
             self.handle_error(str(e))
             raise
+    
+    def browse_executable(self, line_edit):
+        file_name, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select VRChat Executable",
+            "",
+            "Executable Files (*.exe);;All Files (*)"
+        )
+        if file_name:
+            line_edit.setText(file_name)
 
-    def prompt_for_world_url(self, assetbundle_path): # TODO: Deprecate this and reimplement it with an input dialog for unknown worlds
-        try:
-            self.activateWindow()  # Focus the window
-            while True:
-                url, ok = QInputDialog.getText(
-                    self,
-                    "Enter World URL",
-                    "Enter the URL for the newly downloaded world:",
-                )
-                if ok:
-                    if self.is_valid_vrchat_url(url):
-                        self.process_world_url(assetbundle_path, url)
-                        break
-                    else:
-                        self.handle_error(
-                            "Invalid VRChat URL. Please enter a valid URL."
-                        )
-                else:
-                    break
-        except Exception as e:
-            self.handle_error(str(e))
-            raise
-
-    def search_hex_data_for_world_id(self, assetbundle_path): # Searches the assetbundle for the world ID in hex data
+    def search_hex_data_for_world_id(
+        self, assetbundle_path
+    ):  # Searches the assetbundle for the world ID in hex data
         try:
             with open(assetbundle_path, "rb") as f:
                 data = f.read()
@@ -495,61 +492,9 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             return None
 
-    def is_valid_vrchat_url(self, url): # Checks if the URL is a valid VRChat world URL
-        return url.startswith("https://vrchat.com/") and "wrld_" in url
-
-    def url_to_id(self, url): # Converts a VRChat URL to a world ID, will likely be deprecated
-        try:
-            print(url)  # debug, will remove later
-            if "wrld_" in url:
-                return "wrld_" + url.split("wrld_")[1]
-            else:
-                self.handle_error("Invalid URL format.")
-                return None
-        except Exception as e:
-            self.handle_error(str(e))
-            return None
-
-    def process_world_url(self, assetbundle_path, url): # Deprecated, will be replaced with manual input dialog
-        try:
-            if url:
-                try:
-                    world_info = get_world_info(self.url_to_id(url))
-                    if not world_info:
-                        world_info = self.manual_input_world_info()
-
-                    self.record_manager.add_record("Worlds", world_info)
-                    self.copy_asset_bundle(assetbundle_path, world_info)
-
-                    thumbnail_path = world_info.get(
-                        "Thumbnail Path", "./resources/default_thumbnail.png"
-                    )
-                    world_name = world_info.get("World Name", "Unknown")
-                    world_author = world_info.get("World Author", "Unknown")
-
-                    world_id = world_info.get("World ID", "Unknown ID")
-                    list_item_widget = ListItemWidget(
-                        thumbnail_path, world_name, world_author, world_id
-                    )
-                    list_item = QListWidgetItem(self.file_list)
-                    list_item.setSizeHint(list_item_widget.sizeHint())
-
-                    # Add the world id
-                    list_item.world_id = world_info["World ID"]
-
-                    # Add the item and set the widget within the loop
-                    self.file_list.addItem(list_item)
-                    self.file_list.setItemWidget(list_item, list_item_widget)
-                except Exception as e:
-                    # we want a stack trace for debugging
-                    raise e
-            else:
-                self.handle_error("No URL provided.")
-        except Exception as e:
-            self.handle_error(str(e))
-            raise
-
-    def manual_input_world_info(self): # TODO: Implement this for unknown worlds
+    def manual_input_world_info(
+        self,
+    ):  # TODO: Improve and implement this for unknown worlds
         try:
             world_name, ok = QInputDialog.getText(
                 self, "Manual Input", "Enter World Name:"
@@ -586,19 +531,22 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             return None
 
-    def copy_asset_bundle(self,assetbundle_path, world_info): # Copies the asset bundle to the assetbundles directory
+    def copy_asset_bundle(
+        self, assetbundle_path, world_info
+    ):  # Copies the asset bundle to the assetbundles directory
         try:
             asset_bundle_manager = AssetBundleManager()
-            asset_bundle_manager.copy_asset_bundle(assetbundle_path, "./assetbundles", world_info["World ID"])
+            asset_bundle_manager.copy_asset_bundle(
+                assetbundle_path, "./assetbundles", world_info["World ID"]
+            )
         except Exception as e:
             self.handle_error(str(e))
             raise
 
-    def handle_error(self, message): # Displays an error message in a popup
+    def handle_error(self, message):  # Displays an error message in a popup
         raise Exception(message)
-        
 
-    def launch_vrchat(self): # Launches VRChat. Crazy.
+    def launch_vrchat(self):  # Launches VRChat. Crazy.
         try:
             if not self.vrchat_exec_path.text():
                 QMessageBox.warning(
@@ -607,7 +555,7 @@ class QtGUIManager(QWidget):
             else:
 
                 def launch_vrchat_thread():
-                    os.system(f'"{self.vrchat_exec_path.text()}/vrchat.exe"')
+                    os.system(f'"{self.vrchat_exec_path.text()}"')
 
                 threading.Thread(target=launch_vrchat_thread).start()
                 print("Launching VRChat...")
@@ -615,7 +563,7 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             raise
 
-    def discover_existing_cache(self): # Discovers existing cache data
+    def discover_existing_cache(self):  # Discovers existing cache data
         if not self.vrchat_cache_path.text():
             return None  # No cache path specified, probably a first launch
 
@@ -645,23 +593,34 @@ class QtGUIManager(QWidget):
 
                 # Now enqueue update to the main UI thread
                 if new_worlds:
-                    QMetaObject.invokeMethod(self, "add_worlds_to_list", Qt.ConnectionType.QueuedConnection, Q_ARG(list, new_worlds))
+                    QMetaObject.invokeMethod(
+                        self,
+                        "add_worlds_to_list",
+                        Qt.ConnectionType.QueuedConnection,
+                        Q_ARG(list, new_worlds),
+                    )
                     print("Added new worlds to the list.")
             except Exception as e:
-                raise e # we want a stack trace for debugging
+                raise e  # we want a stack trace for debugging
 
         threading.Thread(target=worker).start()
 
     @pyqtSlot(list)
-    def add_worlds_to_list(self, new_worlds): # Adds newly discovered worlds to the list
+    def add_worlds_to_list(
+        self, new_worlds
+    ):  # Adds newly discovered worlds to the list
         try:
             for world_info in new_worlds:
-                thumbnail_path = world_info.get("Thumbnail Path", "./resources/default_thumbnail.png")
+                thumbnail_path = world_info.get(
+                    "Thumbnail Path", "./resources/default_thumbnail.png"
+                )
                 world_name = world_info.get("World Name", "Unknown")
                 world_author = world_info.get("World Author", "Unknown")
                 world_id = world_info.get("World ID", "Unknown ID")
 
-                list_item_widget = ListItemWidget(thumbnail_path, world_name, world_author, world_id)
+                list_item_widget = ListItemWidget(
+                    thumbnail_path, world_name, world_author, world_id
+                )
                 list_item = QListWidgetItem(self.file_list)
                 list_item.setSizeHint(list_item_widget.sizeHint())
 
@@ -674,7 +633,7 @@ class QtGUIManager(QWidget):
             # we want a stack trace for debugging
             raise e
 
-    def closeEvent(self, event): # Closes the application
+    def closeEvent(self, event):  # Closes the application
         try:
             if self.observer:
                 self.observer.stop()
@@ -685,10 +644,12 @@ class QtGUIManager(QWidget):
             raise
 
 
-# if __name__ == "__main__":
-#     # Debugging only
-#     qapplication = QApplication(sys.argv)
-#     qt_gui_manager = QtGUIManager()
-#     assetbundle_test_path = 'C:\\Users\\Neon\\Documents\\GitHub\\VRCacheManager\\assetbundles\\__data'
-#     qt_gui_manager.show()
-#     sys.exit(qapplication.exec())
+if __name__ == "__main__":
+    # Debugging only
+    qapplication = QApplication(sys.argv)
+    qt_gui_manager = QtGUIManager()
+    assetbundle_test_path = (
+        "C:\\Users\\Neon\\Documents\\GitHub\\VRCacheManager\\assetbundles\\__data"
+    )
+    qt_gui_manager.show()
+    sys.exit(qapplication.exec())
