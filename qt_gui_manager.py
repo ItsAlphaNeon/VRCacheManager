@@ -53,6 +53,11 @@ class ListItemWidget(QWidget):
 
 
 class QtGUIManager(QWidget):
+    # Variables - Informative
+    total_worlds = 0
+    new_worlds = 0
+    unknown_worlds = 0
+    
     def __init__(self):
         super().__init__()
 
@@ -77,13 +82,15 @@ class QtGUIManager(QWidget):
         self.setWindowTitle("VRCacheManager")
         self.setGeometry(100, 100, 800, 400)
 
-        main_layout = QHBoxLayout()
+        # Main layout for the worlds list
+        main_layout = QVBoxLayout()
         self.record_manager = RecordManager.RecordManager(
             "records.json", "./assetbundles"
         )
-        # Verify the integrity of the assetbundles directory
-        # This also removes any invalid / missing records
         self.record_manager.verify_integrity("assetbundles")
+
+        # Status label
+        self.status_label = QLabel("0 worlds found, 0 new, 0 unknown") # Placeholder text
 
         # World list widget
         self.file_list = QListWidget()
@@ -110,11 +117,21 @@ class QtGUIManager(QWidget):
                 self.file_list.addItem(list_item)
                 self.file_list.setItemWidget(list_item, list_item_widget)
         # End of loading the list of worlds
-        main_layout.addWidget(self.file_list)
-        self.setLayout(main_layout)
 
-        # Start of controls Layout
+        # Add status label and file list to the main layout
+        main_layout.addWidget(self.status_label)
+        main_layout.addWidget(self.file_list)
+
+        # Control layout for the buttons
         control_layout = QVBoxLayout()
+        # Add a reload button to the main layout
+        self.reload_btn = QPushButton("Reload List")
+        self.reload_btn.setToolTip("Reload the list of worlds")
+        self.reload_btn.setIcon(QIcon("./resources/reload_icon.svg"))
+        self.reload_btn.clicked.connect(self.reload_list)
+        main_layout.addWidget(self.reload_btn)
+
+        # Add status label and file list to the main layout
         self.rename_btn = QPushButton("Rename")
         self.delete_btn = QPushButton("Delete")
         self.view_btn = QPushButton("View Info")
@@ -134,7 +151,6 @@ class QtGUIManager(QWidget):
         self.replace_errorworld_btn.clicked.connect(self.replace_errorworld)
 
         # VRChat executable path
-        # TODO: This currently asks for the path, not the executable itself
         self.vrchat_exec_path = QLineEdit()
         self.vrchat_exec_browse = QPushButton("Browse...")
         self.vrchat_exec_browse.setToolTip("Browse for the VRChat executable")
@@ -148,6 +164,7 @@ class QtGUIManager(QWidget):
         self.vrchat_cache_browse.clicked.connect(
             lambda: self.browse_file(self.vrchat_cache_path)
         )
+
         # Launch VRChat button
         self.launch_vrchat_btn = QPushButton("Launch VRChat")
         self.launch_vrchat_btn.setToolTip("Launch VRChat application")
@@ -208,9 +225,12 @@ class QtGUIManager(QWidget):
 
         control_layout.addWidget(self.launch_vrchat_btn)
 
-        main_layout.addWidget(self.file_list, 3)
-        main_layout.addLayout(control_layout, 1)
-        self.setLayout(main_layout)
+        # Create a horizontal layout to contain both main and controls with size stretches
+        container_layout = QHBoxLayout()
+        container_layout.addLayout(main_layout, 3)  # main_layout will take 3 parts
+        container_layout.addLayout(control_layout, 1)  # control_layout will take 1 part
+
+        self.setLayout(container_layout)
 
         # Stylesheet
         self.setStyleSheet(
@@ -243,30 +263,35 @@ class QtGUIManager(QWidget):
             border-radius: 5px;
             }
             QListWidget::item {
-            background-color: transparent;  /* Use transparent to avoid conflicting effects */
+            background-color: transparent; 
             color: #CCCCCC;
             }
             QListWidget::item:selected {
-            background-color: #505052;  /* Highlight color */
+            background-color: #505052;
             color: #FFFFFF;
             }
             QLabel {
             font-weight: bold;
-            background-color: transparent;  /* Ensure QLabel has no explicit color */
+            background-color: transparent;
             }
             QLabel:active {
-            background-color: transparent;  /* Ensure QLabel changes with selection */
+            background-color: transparent;
             }
             """
         )
         # Discover existing cache data
         self.discover_existing_cache()
+        self.reload_list()
+        
+    def update_status_label(self, total_worlds, new_worlds, unknown_worlds):
+        self.status_label.setText(f"{total_worlds} worlds found, {new_worlds} new, {unknown_worlds} unknown")
 
     def reload_list(self):  # clears and re-populates the list
         try:
             self.file_list.clear()
             worlds = self.record_manager.read_record("Worlds")
             if worlds:
+                world_count = 0
                 for world in worlds:
                     thumbnail_path = world.get(
                         "Thumbnail Path", "./resources/default_thumbnail.png"
@@ -285,6 +310,12 @@ class QtGUIManager(QWidget):
                     # Add the item and set the widget within the loop
                     self.file_list.addItem(list_item)
                     self.file_list.setItemWidget(list_item, list_item_widget)
+                    world_count += 1
+                # Update the total worlds count
+                self.total_worlds = world_count
+            # Update the status label        
+            self.update_status_label(self.total_worlds, self.new_worlds, self.unknown_worlds)
+                    
         except Exception as e:
             self.handle_error(str(e))
             raise
@@ -308,9 +339,7 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             raise
 
-    def delete_file(
-        self,
-    ):  # Deletes the selected world. TODO: Make this delete the thumbnail as well
+    def delete_file(self):
         try:
             selected_item = self.file_list.currentItem()
             if selected_item:
@@ -337,9 +366,7 @@ class QtGUIManager(QWidget):
             self.handle_error(str(e))
             raise
 
-    def view_file_info(
-        self,
-    ):  # Displays information about the selected world in a popup
+    def view_file_info(self):
         try:
             selected_item = self.file_list.currentItem()
             if not selected_item:
@@ -486,7 +513,6 @@ class QtGUIManager(QWidget):
                         end_index += 1
                     # 🎉 Found world ID 🎉
                     world_id = world_id_start_str + utf8_data[start_index:end_index]
-
                 return world_id
         except Exception as e:
             self.handle_error(str(e))
@@ -584,6 +610,8 @@ class QtGUIManager(QWidget):
                         print(f"Discovered new world ID: {world_id}")
                         world_info = get_world_info(world_id)
                         if not world_info:
+                            # TODO: Implement manual input for unknown worlds
+                            self.unknown_worlds += 1
                             continue
                         self.record_manager.add_record("Worlds", world_info)
                         self.copy_asset_bundle(data_file, world_info)
@@ -600,6 +628,11 @@ class QtGUIManager(QWidget):
                         Q_ARG(list, new_worlds),
                     )
                     print("Added new worlds to the list.")
+                    
+                    # Update the status label
+                    self.total_worlds = len(self.record_manager.read_record("Worlds"))
+                    # Count new worlds
+                    self.new_worlds = self.new_worlds + len(new_worlds)
             except Exception as e:
                 raise e  # we want a stack trace for debugging
 
