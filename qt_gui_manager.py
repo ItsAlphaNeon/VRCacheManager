@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QListWidgetItem,
 )
-from PyQt6.QtCore import Qt, QMetaObject, Q_ARG, pyqtSlot
+from PyQt6.QtCore import Qt, QMetaObject, Q_ARG, pyqtSlot, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QIcon, QPixmap
 from cache_event_handler import CacheEventHandler
 from asset_bundle_manager import AssetBundleManager
@@ -52,14 +52,34 @@ class ListItemWidget(QWidget):
         layout.addStretch()
 
 
+class StatusUpdater(QObject):
+    status_signal = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+
+
+class CacheEventHandler:
+    def __init__(self, status_updater):
+        self.status_updater = status_updater
+
+    def on_any_event(self, event):
+        # Emit the signal with the status message
+        self.status_updater.status_signal.emit(f"Event detected: {event}")
+
+
 class QtGUIManager(QWidget):
     # Variables - Informative
     total_worlds = 0
     new_worlds = 0
     unknown_worlds = 0
     
+    # Signal for updating status label
+    update_status_label_signal = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
+        self.update_status_label_signal.connect(self.update_status_label)
 
         # Initialize the observer
         self.observer = None
@@ -72,7 +92,9 @@ class QtGUIManager(QWidget):
             self.observer.stop()
             self.observer.join()
 
-        event_handler = CacheEventHandler(self)
+        self.status_updater = StatusUpdater()
+        self.status_updater.status_signal.connect(self.update_status_label)
+        event_handler = CacheEventHandler(self.status_updater)
         self.observer = Observer()
         self.observer.schedule(event_handler, path, recursive=True)
         self.observer.start()
@@ -89,8 +111,11 @@ class QtGUIManager(QWidget):
         )
         self.record_manager.verify_integrity("assetbundles")
 
-        # Status label
-        self.status_label = QLabel("0 worlds found, 0 new, 0 unknown") # Placeholder text
+        # Info label
+        self.info_label = QLabel("0 worlds found, 0 new, 0 unknown") # Placeholder text
+        
+        # Status Label
+        self.status_label = QLabel("Status: Idle")
 
         # World list widget
         self.file_list = QListWidget()
@@ -119,6 +144,7 @@ class QtGUIManager(QWidget):
         # End of loading the list of worlds
 
         # Add status label and file list to the main layout
+        main_layout.addWidget(self.info_label)
         main_layout.addWidget(self.status_label)
         main_layout.addWidget(self.file_list)
 
@@ -283,10 +309,14 @@ class QtGUIManager(QWidget):
         self.discover_existing_cache()
         self.reload_list()
         
-    def update_status_label(self, total_worlds, new_worlds, unknown_worlds):
-        self.status_label.setText(f"{total_worlds} worlds found, {new_worlds} new, {unknown_worlds} unknown")
+    def update_info_label(self, total_worlds, new_worlds, unknown_worlds):
+        self.info_label.setText(f"{total_worlds} worlds found, {new_worlds} new, {unknown_worlds} unknown")
+        
+    def update_status_label(self, status):
+        self.status_label.setText(f"Status: {status}")
 
     def reload_list(self):  # clears and re-populates the list
+        self.update_status_label("Reloading list...")
         try:
             self.file_list.clear()
             worlds = self.record_manager.read_record("Worlds")
@@ -314,8 +344,8 @@ class QtGUIManager(QWidget):
                 # Update the total worlds count
                 self.total_worlds = world_count
             # Update the status label        
-            self.update_status_label(self.total_worlds, self.new_worlds, self.unknown_worlds)
-                    
+            self.update_info_label(self.total_worlds, self.new_worlds, self.unknown_worlds)
+            self.update_status_label("Idle")
         except Exception as e:
             self.handle_error(str(e))
             raise
@@ -586,15 +616,17 @@ class QtGUIManager(QWidget):
                 threading.Thread(target=launch_vrchat_thread).start()
                 print("Launching VRChat...")
         except Exception as e:
-            self.handle_error(str(e))
-            raise
+            self.update_status_label_signal.emit("Discovering existing cache data...")
 
     def discover_existing_cache(self):  # Discovers existing cache data
-        if not self.vrchat_cache_path.text():
+        self.update_status_label("Discovering existing cache data...")
+        def worker(self):
+            self.update_status_label("Idle")
             return None  # No cache path specified, probably a first launch
 
         def worker():
             try:
+                self.update_status_label("Discovering existing cache data...") # TODO: Fix this race condition
                 # Get all "__data" files
                 data_files = []
                 for root, _, files in os.walk(self.vrchat_cache_path.text()):
@@ -605,13 +637,15 @@ class QtGUIManager(QWidget):
 
                 new_worlds = []  # To store newly discovered worlds
                 for data_file in data_files:
+                    self.update_status_label("Discovering existing cache data...") # TODO: Fix this race condition
                     world_id = self.search_hex_data_for_world_id(data_file)
                     if world_id and not self.record_manager.record_exists(world_id):
                         print(f"Discovered new world ID: {world_id}")
                         world_info = get_world_info(world_id)
                         if not world_info:
                             # TODO: Implement manual input for unknown worlds
-                            self.unknown_worlds += 1
+                            # NOTE: This shouldn't be implemented HERE, but for fresh downloads. Not for existing cache data.
+                            self.unknown_worlds += 1 # This is working as intended
                             continue
                         self.record_manager.add_record("Worlds", world_info)
                         self.copy_asset_bundle(data_file, world_info)
@@ -631,13 +665,12 @@ class QtGUIManager(QWidget):
                     
                     # Update the status label
                     self.total_worlds = len(self.record_manager.read_record("Worlds"))
-                    # Count new worlds
-                    self.new_worlds = self.new_worlds + len(new_worlds)
-            except Exception as e:
-                raise e  # we want a stack trace for debugging
+            finally:
+                self.update_status_label_signal.emit("Idle")
+                self.update_status_label_signal.emit("Idle")
 
         threading.Thread(target=worker).start()
-
+        threading.Thread(target=worker, args=(self,)).start()
     @pyqtSlot(list)
     def add_worlds_to_list(
         self, new_worlds
