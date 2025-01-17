@@ -574,23 +574,30 @@ class QtGUIManager(QWidget):
             self.record_manager.add_record("vrchat_exec", file_name)
             print("Saved VRChat executable path.")
             
+    import os
+
     def open_in_explorer(self):
         try:
             selected_item = self.file_list.currentItem()
-            if selected_item:
-                selected_world_id = selected_item.world_id
-                if selected_world_id:
-                    asset_bundle_path = os.path.abspath(f"./assetbundles/{selected_world_id}")
-                    if os.path.exists(asset_bundle_path):
+            if not selected_item:
+                return  # Do nothing if no item is selected
+            selected_world_id = selected_item.world_id
+            if selected_world_id:
+                asset_bundle_path = os.path.abspath(f"./assetbundles/{selected_world_id}")
+                if os.path.exists(asset_bundle_path):
+                    if os.name == 'nt':  # Windows
                         os.system(f'explorer /select,"{asset_bundle_path}"')
+                    elif os.name == 'posix':  # Linux
+                        os.system(f'xdg-open "{asset_bundle_path}"')
                     else:
-                        self.handle_error("Asset bundle not found.")
+                        self.handle_error("Unsupported operating system.")
                 else:
-                    self.handle_error("World ID not found.")
+                    self.handle_error("Asset bundle not found.")
             else:
-                self.handle_error("No item selected.")
+                self.handle_error("World ID not found.")
         except Exception as e:
             self.handle_error(str(e))
+
 
     def search_hex_data_for_world_id(
         self, assetbundle_path
