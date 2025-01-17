@@ -12,7 +12,7 @@ This project is intended for those who would like to view VRChat worlds without 
 - **Replace Error World**: Replace the ErrorWorld with a custom world, allowing you to view worlds without EAC.
 - **Monitor Cache Directory**: Automatically detect new files in the VRChat cache directory.
 - **Launch VRChat**: Launch VRChat directly from the application.
-- **Web Scrape World Data**: Fetch world data from the web.
+- **API Integration**: Fetch world data from the VRChat API.
 
 ## Installation
 
@@ -44,6 +44,7 @@ This project is intended for those who would like to view VRChat worlds without 
 - watchdog
 - requests
 - BeautifulSoup4
+- vrchatapi
 
 ## File Structure
 
@@ -67,3 +68,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 - [PyQt](https://riverbankcomputing.com/software/pyqt/intro) for the UI framework.
 - [watchdog](https://github.com/gorakhargosh/watchdog) for file system event monitoring.
+- [vrchatapi](https://github.com/vrchatapi/vrchatapi-python) for interfacing with the VRChat API.

@@ -3,6 +3,9 @@ import requests
 from bs4 import BeautifulSoup
 import traceback
 
+# This whole script will be deprecated in the future, as the VRChat API will be used instead
+# I'll just leave this here to use as a fallback in the future if VRChat corperate greed gets in the way
+
 FILE_NAME = "output.html"
 DIRECTORY = "./webscraping/"
 THUMBNAIL_DIRECTORY = "./assetbundles/thumbnails/"
