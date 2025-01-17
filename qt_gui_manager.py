@@ -199,6 +199,7 @@ class QtGUIManager(QWidget):
         self.delete_btn = QPushButton("Delete")
         self.view_btn = QPushButton("View Info")
         self.replace_errorworld_btn = QPushButton("Replace ErrorWorld")
+        self.open_in_explorer_btn = QPushButton("Open in Explorer")
 
         self.rename_btn.setToolTip("Rename the selected world")
         self.delete_btn.setToolTip("Delete the selected world")
@@ -206,12 +207,14 @@ class QtGUIManager(QWidget):
         self.replace_errorworld_btn.setToolTip(
             "Replace the error world with the selected world"
         )
+        self.open_in_explorer_btn.setToolTip("Open the selected world in your file explorer")
 
         # Connect the buttons to their respective functions
         self.rename_btn.clicked.connect(lambda: self.rename_file(self.record_manager))
         self.delete_btn.clicked.connect(self.delete_file)
         self.view_btn.clicked.connect(self.view_file_info)
         self.replace_errorworld_btn.clicked.connect(self.replace_errorworld)
+        self.open_in_explorer_btn.clicked.connect(self.open_in_explorer)
 
         # VRChat executable path
         self.vrchat_exec_path = QLineEdit()
@@ -260,6 +263,7 @@ class QtGUIManager(QWidget):
         self.vrchat_cache_browse.setIcon(QIcon("./resources/browse_icon.svg"))
         self.launch_vrchat_btn.setIcon(QIcon("./resources/launch_icon.svg"))
         self.login_vrchat_btn.setIcon(QIcon("./resources/login_icon.svg"))
+        self.open_in_explorer_btn.setIcon(QIcon("./resources/open_icon.svg"))
 
         # Load the paths from the records
         if self.record_manager.verify_record("vrchat_exec"):
@@ -278,6 +282,7 @@ class QtGUIManager(QWidget):
         control_layout.addWidget(self.delete_btn)
         control_layout.addWidget(self.view_btn)
         control_layout.addWidget(self.replace_errorworld_btn)
+        control_layout.addWidget(self.open_in_explorer_btn)
         control_layout.addStretch()
 
         control_layout.addWidget(QLabel("<hr>"))
@@ -568,6 +573,24 @@ class QtGUIManager(QWidget):
             self.record_manager.remove_record("vrchat_exec")
             self.record_manager.add_record("vrchat_exec", file_name)
             print("Saved VRChat executable path.")
+            
+    def open_in_explorer(self):
+        try:
+            selected_item = self.file_list.currentItem()
+            if selected_item:
+                selected_world_id = selected_item.world_id
+                if selected_world_id:
+                    asset_bundle_path = os.path.abspath(f"./assetbundles/{selected_world_id}")
+                    if os.path.exists(asset_bundle_path):
+                        os.system(f'explorer /select,"{asset_bundle_path}"')
+                    else:
+                        self.handle_error("Asset bundle not found.")
+                else:
+                    self.handle_error("World ID not found.")
+            else:
+                self.handle_error("No item selected.")
+        except Exception as e:
+            self.handle_error(str(e))
 
     def search_hex_data_for_world_id(
         self, assetbundle_path
