@@ -151,8 +151,8 @@ class QtGUIManager(QWidget):
         self.record_manager.verify_integrity("assetbundles")
 
         # Info label
-        self.info_label = QLabel("0 worlds found, 0 new, 0 unknown") # Placeholder text
-        
+        self.info_label = QLabel("0 worlds found, 0 new, 0 unknown")  # Placeholder text
+
         # Status Label
         self.status_label = QLabel("Status: Idle")
 
@@ -189,24 +189,24 @@ class QtGUIManager(QWidget):
 
         # Control layout for the buttons
         control_layout = QVBoxLayout()
-        
+
         # Create a layout for split "reload / discover" button
         reload_discover_layout = QHBoxLayout()
-        
+
         # Add a reload button to the discover button
         self.reload_btn = QPushButton("Reload List")
         self.reload_btn.setToolTip("Reload the list of worlds")
         self.reload_btn.setIcon(QIcon("./resources/reload_icon.svg"))
         self.reload_btn.clicked.connect(self.reload_list)
         reload_discover_layout.addWidget(self.reload_btn)
-        
+
         # Add a discover button to the layout
         self.discover_btn = QPushButton("Discover Worlds")
         self.discover_btn.setToolTip("Discover worlds in the VRChat cache. (This is experimental, and will not work 100% of the time.)")
         self.discover_btn.setIcon(QIcon("./resources/discover_icon.svg"))
         self.discover_btn.clicked.connect(self.discover_existing_cache)
         reload_discover_layout.addWidget(self.discover_btn)
-        
+
         # Add the reload/discover layout to the main layout
         main_layout.addLayout(reload_discover_layout)
 
@@ -234,19 +234,48 @@ class QtGUIManager(QWidget):
 
         # VRChat executable path
         self.vrchat_exec_path = QLineEdit()
-        self.vrchat_exec_browse = QPushButton("Browse...")
+        self.autodetect_exec_btn = QPushButton()
+        self.autodetect_exec_btn.setToolTip("Autodetect VRChat executable")
+        self.autodetect_exec_btn.setIcon(QIcon("./resources/autodetect_icon.svg"))
+
+        vrchat_exec_layout = QHBoxLayout()
+        self.vrchat_exec_path.setReadOnly(True)
+        vrchat_exec_layout.addWidget(self.vrchat_exec_path, 4)
+        vrchat_exec_layout.addWidget(self.autodetect_exec_btn, 1)
+
+        # Connect Autodetect button
+        self.autodetect_exec_btn.clicked.connect(lambda: self.attempt_auto_detect_paths("exe"))
+        
+        # VRChat executable browse layout
+        self.vrchat_exec_browse = QPushButton("Browse")
         self.vrchat_exec_browse.setToolTip("Browse for the VRChat executable")
+        self.vrchat_exec_browse.setIcon(QIcon("./resources/browse_icon.svg"))
         self.vrchat_exec_browse.clicked.connect(
             lambda: self.browse_executable(self.vrchat_exec_path)
         )
+
         # VRChat cache directory
         self.vrchat_cache_path = QLineEdit()
-        self.vrchat_cache_browse = QPushButton("Browse...")
+        self.autodetect_cache_btn = QPushButton()
+        self.autodetect_cache_btn.setToolTip("Autodetect VRChat cache directory")
+        self.autodetect_cache_btn.setIcon(QIcon("./resources/autodetect_icon.svg"))
+
+        vrchat_cache_layout = QHBoxLayout()
+        self.vrchat_cache_path.setReadOnly(True)
+        vrchat_cache_layout.addWidget(self.vrchat_cache_path, 4)
+        vrchat_cache_layout.addWidget(self.autodetect_cache_btn, 1)
+
+        # Connect Autodetect cache button
+        self.autodetect_cache_btn.clicked.connect(lambda: self.attempt_auto_detect_paths("cache"))
+
+        # VRChat cache browse layout
+        self.vrchat_cache_browse = QPushButton("Browse")
         self.vrchat_cache_browse.setToolTip("Browse for the VRChat cache directory")
+        self.vrchat_cache_browse.setIcon(QIcon("./resources/browse_icon.svg"))
         self.vrchat_cache_browse.clicked.connect(
             lambda: self.browse_file(self.vrchat_cache_path)
         )
-        
+
         # Login to VRChat API Button
         self.login_vrchat_btn = QPushButton("Login to VRChat API")
         self.login_vrchat_btn.setToolTip("Login to VRChat API")
@@ -275,8 +304,6 @@ class QtGUIManager(QWidget):
         self.delete_btn.setIcon(QIcon("./resources/delete_icon.svg"))
         self.view_btn.setIcon(QIcon("./resources/view_icon.svg"))
         self.replace_errorworld_btn.setIcon(QIcon("./resources/replace_icon.svg"))
-        self.vrchat_exec_browse.setIcon(QIcon("./resources/browse_icon.svg"))
-        self.vrchat_cache_browse.setIcon(QIcon("./resources/browse_icon.svg"))
         self.launch_vrchat_btn.setIcon(QIcon("./resources/launch_icon.svg"))
         self.login_vrchat_btn.setIcon(QIcon("./resources/login_icon.svg"))
         self.open_in_explorer_btn.setIcon(QIcon("./resources/open_icon.svg"))
@@ -304,15 +331,13 @@ class QtGUIManager(QWidget):
         control_layout.addWidget(QLabel("<hr>"))
 
         control_layout.addWidget(QLabel("VRChat Executable:"))
-        self.vrchat_exec_path.setReadOnly(True)
-        control_layout.addWidget(self.vrchat_exec_path)
+        control_layout.addLayout(vrchat_exec_layout)
         control_layout.addWidget(self.vrchat_exec_browse)
 
         control_layout.addWidget(QLabel("<hr>"))
 
         control_layout.addWidget(QLabel("VRChat Cache Directory:"))
-        self.vrchat_cache_path.setReadOnly(True)
-        control_layout.addWidget(self.vrchat_cache_path)
+        control_layout.addLayout(vrchat_cache_layout)
         control_layout.addWidget(self.vrchat_cache_browse)
 
         control_layout.addWidget(QLabel("<hr>"))
@@ -329,7 +354,7 @@ class QtGUIManager(QWidget):
         self.setLayout(container_layout)
 
         self.reload_list() 
-        
+
         # Stylesheet
         self.setStyleSheet(
             """
@@ -377,6 +402,7 @@ class QtGUIManager(QWidget):
             }
             """
         )
+
         
     def update_info_label(self, total_worlds, new_worlds, unknown_worlds):
         self.info_label.setText(f"{total_worlds} worlds found, {new_worlds} new, {unknown_worlds} unknown")
@@ -757,7 +783,7 @@ class QtGUIManager(QWidget):
             print(f"Exception occurred: {str(e)}")
             raise
 
-    def discover_existing_cache(self): # This should only be called once at the start of the program
+    def discover_existing_cache(self): # This goes through and attempts to discover worlds through the existing cache
         
         self.unknown_worlds = 0 # Reset the unknown worlds count
         self.update_status_label("Discovering existing cache data...")
@@ -789,8 +815,6 @@ class QtGUIManager(QWidget):
 
                 self.add_worlds_signal.emit(new_worlds)
                 self.update_status_label_signal.emit("Idle")
-                
-                self.add_worlds_signal.emit(new_worlds)
             except Exception as e:
                 self.handle_error(str(e))
         threading.Thread(target=worker).start()
@@ -894,6 +918,139 @@ class QtGUIManager(QWidget):
         print("If you see this message, the world has been processed successfully.")
         
         self.reload_list()
+    
+    # Attempted automatic path detection for the VRChat cache / executable
+    def attempt_auto_detect_paths(self, path):
+        try:
+            if sys.platform == "win32":
+                if path == "exe":
+                    # Attempt to find the VRChat executable path
+                    possible_paths = [
+                        os.path.join(
+                            os.environ["ProgramFiles(x86)"],
+                            "Steam",
+                            "steamapps",
+                            "common",
+                            "VRChat",
+                            "VRChat.exe",
+                        ),
+                        os.path.join(
+                            os.environ["ProgramFiles"],
+                            "Steam",
+                            "steamapps",
+                            "common",
+                            "VRChat",
+                            "VRChat.exe",
+                        ),
+                    ]
+                    for exe_path in possible_paths:
+                        if os.path.exists(exe_path):
+                            self.vrchat_exec_path.setText(exe_path)
+                            self.record_manager.remove_record("vrchat_exec")
+                            self.record_manager.add_record("vrchat_exec", exe_path)
+                            print("Auto-detected VRChat executable path.")
+                            break
+                    else:
+                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat executable path.")
+
+                elif path == "cache":
+                    print("Attempting to auto-detect VRChat cache path...")
+                    # Attempt to find the VRChat cache path
+                    possible_cache_paths = [
+                        os.path.join(
+                            os.environ["LOCALAPPDATA"], "VRChat", "VRChat", "Cache-WindowsPlayer"
+                        ),
+                        os.path.join(
+                            os.getenv("APPDATA"), "VRChat", "VRChat", "Cache-WindowsPlayer"
+                        ),
+                        os.path.join(
+                            os.environ["USERPROFILE"], "AppData", "LocalLow", "VRChat", "VRChat", "Cache-WindowsPlayer"
+                        ),
+                    ]
+                    for cache_path in possible_cache_paths:
+                        if os.path.exists(cache_path):
+                            self.vrchat_cache_path.setText(cache_path)
+                            self.record_manager.remove_record("vrchat_cache")
+                            self.record_manager.add_record("vrchat_cache", cache_path)
+                            self.start_watching(cache_path)
+                            print("Auto-detected VRChat cache path.")
+                            break
+                    else:
+                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat cache path.")
+            elif sys.platform == "linux":
+                user_home = os.path.expanduser("~")
+                if path == "exe":
+                    # Attempt to find the VRChat executable path
+                    possible_paths = [
+                        os.path.join(
+                            user_home,
+                            ".steam",
+                            "steam",
+                            "steamapps",
+                            "common",
+                            "VRChat",
+                            "VRChat.exe",
+                        ),
+                        os.path.join(
+                            user_home,
+                            ".steam",
+                            "root",
+                            "steamapps",
+                            "common",
+                            "VRChat",
+                            "VRChat.exe",
+                        ),
+                    ]
+                    for exe_path in possible_paths:
+                        if os.path.exists(exe_path):
+                            self.vrchat_exec_path.setText(exe_path)
+                            self.record_manager.remove_record("vrchat_exec")
+                            self.record_manager.add_record("vrchat_exec", exe_path)
+                            print("Auto-detected VRChat executable path.")
+                            break
+                    else:
+                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat executable path.")
+
+                elif path == "cache":
+                    print("Attempting to auto-detect VRChat cache path...")
+                    # Attempt to find the VRChat cache path
+                    possible_cache_paths = [
+                        os.path.join(
+                            user_home,
+                            ".steam",
+                            "root",
+                            "steamapps",
+                            "compatdata",
+                            "438100",
+                            "pfx",
+                            "drive_c",
+                            "users",
+                            "steamuser",
+                            "AppData",
+                            "LocalLow",
+                            "VRChat",
+                            "VRChat",
+                            "Cache-WindowsPlayer",
+                        ),
+                    ]
+                    for cache_path in possible_cache_paths:
+                        if os.path.exists(cache_path):
+                            self.vrchat_cache_path.setText(cache_path)
+                            self.record_manager.remove_record("vrchat_cache")
+                            self.record_manager.add_record("vrchat_cache", cache_path)
+                            self.start_watching(cache_path)
+                            print("Auto-detected VRChat cache path.")
+                            break
+                    else:
+                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat cache path.")
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Auto-detection not supported",
+                    "Automatic detection is only supported on Windows and Linux.",
+                )
+        except Exception as e:
+            self.handle_error(str(e))
 
 
 # if __name__ == "__main__":
