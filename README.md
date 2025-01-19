@@ -2,7 +2,7 @@
 
 VRCacheManager is a tool designed to manage VRChat cache files, allowing you to rename, delete, view information, and replace the ErrorWorld. 
 
-This project is intended for those who would like to view VRChat worlds without running Easy Anti-Cheat (EAC) or for those who would like to preserve their favorite worlds.
+This project is intended for individuals who wish to view VRChat worlds without running Easy Anti-Cheat (EAC) or those who want to preserve their favorite worlds.
 
 ## Features
 
@@ -13,6 +13,12 @@ This project is intended for those who would like to view VRChat worlds without 
 - **Monitor Cache Directory**: Automatically detect new files in the VRChat cache directory.
 - **Launch VRChat**: Launch VRChat directly from the application.
 - **API Integration**: Fetch world data from the VRChat API.
+
+## Releases
+
+Pre-release binaries are available on the [GitHub releases page](https://github.com/ItsAlphaNeon/VRCacheManager/releases).
+
+You can also build your own binaries with the included Batch file in the Repository.
 
 ## Installation
 
