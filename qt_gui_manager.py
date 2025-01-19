@@ -187,12 +187,26 @@ class QtGUIManager(QWidget):
 
         # Control layout for the buttons
         control_layout = QVBoxLayout()
-        # Add a reload button to the main layout
+        
+        # Create a layout for split "reload / discover" button
+        reload_discover_layout = QHBoxLayout()
+        
+        # Add a reload button to the discover button
         self.reload_btn = QPushButton("Reload List")
         self.reload_btn.setToolTip("Reload the list of worlds")
         self.reload_btn.setIcon(QIcon("./resources/reload_icon.svg"))
         self.reload_btn.clicked.connect(self.reload_list)
-        main_layout.addWidget(self.reload_btn)
+        reload_discover_layout.addWidget(self.reload_btn)
+        
+        # Add a discover button to the layout
+        self.discover_btn = QPushButton("Discover Worlds")
+        self.discover_btn.setToolTip("Discover worlds in the VRChat cache. (This is experimental, and will not work 100% of the time.)")
+        self.discover_btn.setIcon(QIcon("./resources/discover_icon.svg"))
+        self.discover_btn.clicked.connect(self.discover_existing_cache)
+        reload_discover_layout.addWidget(self.discover_btn)
+        
+        # Add the reload/discover layout to the main layout
+        main_layout.addLayout(reload_discover_layout)
 
         # Add status label and file list to the main layout
         self.rename_btn = QPushButton("Rename")
@@ -358,9 +372,6 @@ class QtGUIManager(QWidget):
             }
             """
         )
-        # Discover existing cache data
-        self.discover_existing_cache()
-        self.reload_list()
         
     def update_info_label(self, total_worlds, new_worlds, unknown_worlds):
         self.info_label.setText(f"{total_worlds} worlds found, {new_worlds} new, {unknown_worlds} unknown")
@@ -741,6 +752,7 @@ class QtGUIManager(QWidget):
                     self.total_worlds = len(record_manager.read_record("Worlds"))
             finally:
                 self.update_status_label_signal.emit("Idle")
+                self.reload_list()
         # Start the worker thread
         threading.Thread(target=worker, args=(cache_path, record_manager, api_manager)).start()
         
