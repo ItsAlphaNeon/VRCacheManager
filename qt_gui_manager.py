@@ -946,7 +946,6 @@ class QtGUIManager(QWidget):
                     for exe_path in possible_paths:
                         if os.path.exists(exe_path):
                             self.vrchat_exec_path.setText(exe_path)
-                            self.record_manager.remove_record("vrchat_exec")
                             self.record_manager.add_record("vrchat_exec", exe_path)
                             print("Auto-detected VRChat executable path.")
                             break
@@ -970,7 +969,6 @@ class QtGUIManager(QWidget):
                     for cache_path in possible_cache_paths:
                         if os.path.exists(cache_path):
                             self.vrchat_cache_path.setText(cache_path)
-                            self.record_manager.remove_record("vrchat_cache")
                             self.record_manager.add_record("vrchat_cache", cache_path)
                             self.start_watching(cache_path)
                             print("Auto-detected VRChat cache path.")
