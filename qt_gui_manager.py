@@ -141,7 +141,7 @@ class QtGUIManager(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("VRCacheManager")
-        self.setGeometry(100, 100, 800, 400)
+        self.setGeometry(100, 100, 850, 400)
 
         # Main layout for the worlds list
         main_layout = QVBoxLayout()
