@@ -119,7 +119,12 @@ class RecordManager:
             illegal_entries = []
             for world in worlds:
                 try:
-                    if not os.path.exists(os.path.join(directory, world['World ID'])):
+                    world_found = False
+                    for root, dirs, files in os.walk(directory):
+                        if world['World Name'] in dirs:
+                            world_found = True
+                            break
+                    if not world_found:
                         self.remove_record(world['World ID'])
                 except KeyError:
                     illegal_entries.append(world)
