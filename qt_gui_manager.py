@@ -317,7 +317,8 @@ class QtGUIManager(QWidget):
 
         control_layout.addWidget(QLabel("<hr>"))
 
-        control_layout.addWidget(self.login_vrchat_btn)
+        # This isn't needed yet, I'm just future proofing
+        # control_layout.addWidget(self.login_vrchat_btn)
         control_layout.addWidget(self.launch_vrchat_btn)
 
         # Create a horizontal layout to contain both main and controls with size stretches
