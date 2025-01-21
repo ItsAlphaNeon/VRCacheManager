@@ -16,20 +16,31 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QMetaObject, Q_ARG, pyqtSlot, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QIcon, QPixmap
+
 # from cache_event_handler import CacheEventHandler
 from asset_bundle_manager import AssetBundleManager
 import record_manager as RecordManager
 from vrchat_api_manager import VRChatAPIManager
+
 # from worlddata import get_world_info # Deprecated, this script sucked ass
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import json
 import threading
 import shutil
+import re
 
 
 class ListItemWidget(QWidget):
-    def __init__(self, thumbnail_path, world_name, world_author, world_id, parent=None):
+    def __init__(
+        self,
+        thumbnail_path,
+        world_name,
+        world_author,
+        world_id,
+        parent=None,
+        is_ambiguous=False,
+    ):
         super(ListItemWidget, self).__init__(parent)
         self.world_id = world_id  # Assign the world ID
 
@@ -50,6 +61,19 @@ class ListItemWidget(QWidget):
         layout.addWidget(thumbnail_label)
         layout.addWidget(text_label)
 
+        # Add ambiguous icon if is_ambiguous is True
+        if is_ambiguous:
+            ambiguous_icon_label = QLabel(self)
+            ambiguous_icon_label.setPixmap(
+                QPixmap("./resources/ambiguous_icon.svg").scaled(
+                    20, 20, Qt.AspectRatioMode.KeepAspectRatio
+                )
+            )
+            ambiguous_icon_label.setToolTip(
+                "This entry was the result of an assetbundle returning multiple results. Double check to see what world this was"
+            )
+            layout.addWidget(ambiguous_icon_label)
+
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addStretch()
 
@@ -60,10 +84,13 @@ class StatusUpdater(QObject):
     def __init__(self):
         super().__init__()
 
+
 # This handles cache events, moved from the legacy script
 class CacheEventHandler(FileSystemEventHandler, QObject):
-    new_file_detected = pyqtSignal(str, bool)  # Signal to emit new file path and a boolean
-    
+    new_file_detected = pyqtSignal(
+        str, bool
+    )  # Signal to emit new file path and a boolean
+
     def __init__(self):
         super().__init__()
         QObject.__init__(self)
@@ -82,7 +109,7 @@ class QtGUIManager(QWidget):
     total_worlds = 0
     new_worlds = 0
     unknown_worlds = 0
-    
+
     # Signal for updating status label
     update_status_label_signal = pyqtSignal(str)
     add_worlds_signal = pyqtSignal(list)
@@ -90,13 +117,17 @@ class QtGUIManager(QWidget):
     def __init__(self):
         super().__init__()
         self.api_manager = VRChatAPIManager()
-        self.api_manager.username_password_signal.connect(self.show_username_password_prompt)
+        self.api_manager.username_password_signal.connect(
+            self.show_username_password_prompt
+        )
         self.api_manager.two_factor_signal.connect(self.show_two_factor_prompt)
         self.update_status_label_signal.connect(self.update_status_label)
         self.add_worlds_signal.connect(self.add_worlds_to_list)
-        
+
         # Authenticate the header for the API
-        self.api_manager.authenticate(None, None, "vrc@freevrc.com") # This email is for VRChat to contact us. This may change in the future.
+        self.api_manager.authenticate(
+            None, None, "vrc@freevrc.com"
+        )  # This email is for VRChat to contact us. This may change in the future.
 
         # Initialize the observer
         self.observer = None
@@ -108,10 +139,14 @@ class QtGUIManager(QWidget):
         username, ok1 = QInputDialog.getText(self, "Login", "Enter Username:")
         if not ok1:
             return
-        password, ok2 = QInputDialog.getText(self, "Login", "Enter Password:", QLineEdit.EchoMode.Password)
+        password, ok2 = QInputDialog.getText(
+            self, "Login", "Enter Password:", QLineEdit.EchoMode.Password
+        )
         if not ok2:
             return
-        api_usage_email, ok3 = QInputDialog.getText(self, "Login", "Enter API Usage Email:")
+        api_usage_email, ok3 = QInputDialog.getText(
+            self, "Login", "Enter API Usage Email:"
+        )
         if not ok3:
             return
         self.api_manager.authenticate(username, password, api_usage_email)
@@ -137,7 +172,6 @@ class QtGUIManager(QWidget):
         self.observer.schedule(event_handler, path, recursive=True)
         self.observer.start()
         print(f"Watching {path} for changes...")
-
 
     def init_ui(self):
         self.setWindowTitle("VRCacheManager")
@@ -170,7 +204,11 @@ class QtGUIManager(QWidget):
                 world_author = world.get("World Author", "Unknown")
 
                 list_item_widget = ListItemWidget(
-                    thumbnail_path, world_name, world_author, world["World ID"]
+                    thumbnail_path,
+                    world_name,
+                    world_author,
+                    world["World ID"],
+                    is_ambiguous=world["Ambiguous"],
                 )
                 list_item = QListWidgetItem(self.file_list)
                 list_item.setSizeHint(list_item_widget.sizeHint())
@@ -202,7 +240,9 @@ class QtGUIManager(QWidget):
 
         # Add a discover button to the layout
         self.discover_btn = QPushButton("Discover Worlds")
-        self.discover_btn.setToolTip("Discover worlds in the VRChat cache. (This is experimental, and will not work 100% of the time.)")
+        self.discover_btn.setToolTip(
+            "Discover worlds in the VRChat cache. (This is experimental, and will not work 100% of the time.)"
+        )
         self.discover_btn.setIcon(QIcon("./resources/discover_icon.svg"))
         self.discover_btn.clicked.connect(self.discover_existing_cache)
         reload_discover_layout.addWidget(self.discover_btn)
@@ -223,7 +263,9 @@ class QtGUIManager(QWidget):
         self.replace_errorworld_btn.setToolTip(
             "Replace the error world with the selected world"
         )
-        self.open_in_explorer_btn.setToolTip("Open the selected world in your file explorer")
+        self.open_in_explorer_btn.setToolTip(
+            "Open the selected world in your file explorer"
+        )
 
         # Connect the buttons to their respective functions
         self.rename_btn.clicked.connect(lambda: self.rename_file())
@@ -244,8 +286,10 @@ class QtGUIManager(QWidget):
         vrchat_exec_layout.addWidget(self.autodetect_exec_btn, 1)
 
         # Connect Autodetect button
-        self.autodetect_exec_btn.clicked.connect(lambda: self.attempt_auto_detect_paths("exe"))
-        
+        self.autodetect_exec_btn.clicked.connect(
+            lambda: self.attempt_auto_detect_paths("exe")
+        )
+
         # VRChat executable browse layout
         self.vrchat_exec_browse = QPushButton("Browse")
         self.vrchat_exec_browse.setToolTip("Browse for the VRChat executable")
@@ -266,7 +310,9 @@ class QtGUIManager(QWidget):
         vrchat_cache_layout.addWidget(self.autodetect_cache_btn, 1)
 
         # Connect Autodetect cache button
-        self.autodetect_cache_btn.clicked.connect(lambda: self.attempt_auto_detect_paths("cache"))
+        self.autodetect_cache_btn.clicked.connect(
+            lambda: self.attempt_auto_detect_paths("cache")
+        )
 
         # VRChat cache browse layout
         self.vrchat_cache_browse = QPushButton("Browse")
@@ -283,7 +329,9 @@ class QtGUIManager(QWidget):
         # TODO: Finish implementing a full login, but for now we'll disable the button
         # Simple world API calls don't require authentication
         self.login_vrchat_btn.setEnabled(False)
-        self.login_vrchat_btn.setToolTip("This isn't needed quite yet, we're just future-proofing")
+        self.login_vrchat_btn.setToolTip(
+            "This isn't needed quite yet, we're just future-proofing"
+        )
 
         # Launch VRChat button
         self.launch_vrchat_btn = QPushButton("Launch VRChat")
@@ -353,7 +401,7 @@ class QtGUIManager(QWidget):
 
         self.setLayout(container_layout)
 
-        self.reload_list() 
+        self.reload_list()
 
         # Stylesheet
         self.setStyleSheet(
@@ -403,10 +451,11 @@ class QtGUIManager(QWidget):
             """
         )
 
-        
     def update_info_label(self, total_worlds, new_worlds, unknown_worlds):
-        self.info_label.setText(f"{total_worlds} worlds found, {new_worlds} new, {unknown_worlds} unknown")
-        
+        self.info_label.setText(
+            f"{total_worlds} worlds found, {new_worlds} new, {unknown_worlds} unknown"
+        )
+
     def update_status_label(self, status):
         self.status_label.setText(f"Status: {status}")
 
@@ -425,7 +474,11 @@ class QtGUIManager(QWidget):
                     world_author = world.get("World Author", "Unknown")
 
                     list_item_widget = ListItemWidget(
-                        thumbnail_path, world_name, world_author, world["World ID"]
+                        thumbnail_path,
+                        world_name,
+                        world_author,
+                        world["World ID"],
+                        is_ambiguous=world["Ambiguous"],
                     )
                     list_item = QListWidgetItem(self.file_list)
                     list_item.setSizeHint(list_item_widget.sizeHint())
@@ -438,8 +491,10 @@ class QtGUIManager(QWidget):
                     world_count += 1
                 # Update the total worlds count
                 self.total_worlds = world_count
-            # Update the status label        
-            self.update_info_label(self.total_worlds, self.new_worlds, self.unknown_worlds)
+            # Update the status label
+            self.update_info_label(
+                self.total_worlds, self.new_worlds, self.unknown_worlds
+            )
             self.update_status_label("Idle")
         except Exception as e:
             self.handle_error(str(e))
@@ -458,14 +513,20 @@ class QtGUIManager(QWidget):
                     text=selected_item.text(),
                 )
                 if ok:
-                    record = next((world for world in self.record_manager.read_record("Worlds") if world["World ID"] == selected_item.world_id), None)
+                    record = next(
+                        (
+                            world
+                            for world in self.record_manager.read_record("Worlds")
+                            if world["World ID"] == selected_item.world_id
+                        ),
+                        None,
+                    )
                     if record is None:
                         self.handle_error("World ID not found in records.")
                         return
                     old_name = record["World Name"]
                     target_dir = os.path.join("./assetbundles", old_name)
 
-                    
                     # Rename the directory
                     new_target_dir = os.path.join("./assetbundles", new_name)
                     os.rename(target_dir, new_target_dir)
@@ -488,31 +549,49 @@ class QtGUIManager(QWidget):
                     QMessageBox.StandardButton.No,
                 )
                 if reply == QMessageBox.StandardButton.Yes:
-                    worlds = self.record_manager.read_record("Worlds") # Save this as a var since we're deleting it
-                    
-                    
-                    print(worlds) # debug
-                    
+                    worlds = self.record_manager.read_record(
+                        "Worlds"
+                    )  # Save this as a var since we're deleting it
+
+                    print(worlds)  # debug
+
                     # Delete the directory
-                    dir_name = next((world for world in worlds if world["World ID"] == selected_item.world_id), None)
+                    dir_name = next(
+                        (
+                            world
+                            for world in worlds
+                            if world["World ID"] == selected_item.world_id
+                        ),
+                        None,
+                    )
                     if dir_name is None:
                         self.handle_error("World ID not found in records.")
                         return
                     target_dir = os.path.join("./assetbundles", dir_name["World Name"])
-                    
+
                     shutil.rmtree(target_dir)
 
                     # Remove the thumbnail
-                    thumbnail_path = next((world for world in worlds if world["World ID"] == selected_item.world_id), None)
+                    thumbnail_path = next(
+                        (
+                            world
+                            for world in worlds
+                            if world["World ID"] == selected_item.world_id
+                        ),
+                        None,
+                    )
                     if thumbnail_path is None:
                         self.handle_error("World ID not found in records.")
                         return
-                    thumbnail_path = os.path.join("./assetbundles/thumbnails", os.path.basename(dir_name["Thumbnail Path"]))
+                    thumbnail_path = os.path.join(
+                        "./assetbundles/thumbnails",
+                        os.path.basename(dir_name["Thumbnail Path"]),
+                    )
                     os.remove(thumbnail_path)
-                    
+
                     # Remove the record
                     self.record_manager.remove_record(selected_item.world_id)
-                    
+
                     self.reload_list()
         except Exception as e:
             self.handle_error(str(e))
@@ -571,7 +650,9 @@ class QtGUIManager(QWidget):
         except Exception as e:
             self.handle_error(str(e))
 
-    def replace_errorworld(self):  # Replaces the errorworld.vrcw with the selected world
+    def replace_errorworld(
+        self,
+    ):  # Replaces the errorworld.vrcw with the selected world
         try:
             if not self.vrchat_cache_path.text():
                 QMessageBox.warning(
@@ -600,11 +681,17 @@ class QtGUIManager(QWidget):
                         selected_world_id = selected_item.world_id
                         world_info = self.record_manager.read_record("Worlds")
                         world_name = next(
-                            (world["World Name"] for world in world_info if world["World ID"] == selected_world_id),
-                            None
+                            (
+                                world["World Name"]
+                                for world in world_info
+                                if world["World ID"] == selected_world_id
+                            ),
+                            None,
                         )
                         if world_name:
-                            source_path = os.path.join("./assetbundles", world_name, selected_world_id)
+                            source_path = os.path.join(
+                                "./assetbundles", world_name, selected_world_id
+                            )
                             shutil.copyfile(source_path, errorworld_path)
                             print(f"Copied {source_path} to {errorworld_path}")
                             print("Replaced errorworld.vrcw with the selected world.")
@@ -640,20 +727,20 @@ class QtGUIManager(QWidget):
         except Exception as e:
             self.handle_error(str(e))
             raise
-    
+
     def browse_executable(self, line_edit):
         file_name, _ = QFileDialog.getOpenFileName(
             self,
             "Select VRChat Executable",
             "",
-            "Executable Files (*.exe);;All Files (*)"
+            "Executable Files (*.exe);;All Files (*)",
         )
         if file_name:
             line_edit.setText(file_name)
             self.record_manager.remove_record("vrchat_exec")
             self.record_manager.add_record("vrchat_exec", file_name)
             print("Saved VRChat executable path.")
-            
+
     import os
 
     def open_in_explorer(self):
@@ -665,15 +752,21 @@ class QtGUIManager(QWidget):
             if selected_world_id:
                 world_info = self.record_manager.read_record("Worlds")
                 world_name = next(
-                    (world["World Name"] for world in world_info if world["World ID"] == selected_world_id),
-                    None
+                    (
+                        world["World Name"]
+                        for world in world_info
+                        if world["World ID"] == selected_world_id
+                    ),
+                    None,
                 )
                 if world_name:
-                    asset_bundle_path = os.path.abspath(f"./assetbundles/{world_name}/{selected_world_id}")
+                    asset_bundle_path = os.path.abspath(
+                        f"./assetbundles/{world_name}/{selected_world_id}"
+                    )
                     if os.path.exists(asset_bundle_path):
-                        if os.name == 'nt':  # Windows
+                        if os.name == "nt":  # Windows
                             os.system(f'explorer /select,"{asset_bundle_path}"')
-                        elif os.name == 'posix':  # Linux
+                        elif os.name == "posix":  # Linux
                             os.system(f'xdg-open "{asset_bundle_path}"')
                         else:
                             self.handle_error("Unsupported operating system.")
@@ -686,46 +779,51 @@ class QtGUIManager(QWidget):
         except Exception as e:
             self.handle_error(str(e))
 
+    def search_hex_data_for_world_id(self, assetbundle_path):
 
-    def search_hex_data_for_world_id(
-        self, assetbundle_path
-    ):  # Searches the assetbundle for the world ID in hex data
+        world_id_pattern = re.compile(
+            r"wrld_[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-"
+            r"[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+        )
+
         try:
             with open(assetbundle_path, "rb") as f:
                 data = f.read()
-                utf8_data = data.decode(
-                    "utf-8", "ignore"
-                )  # Decode as UTF-8, ignore non UTF-8 compatible chars
-                world_id_start_str = "wrld_"
-                world_ids = []
-                start_index = utf8_data.find(world_id_start_str)
+                utf8_data = data.decode("utf-8", "ignore")
 
-                while start_index != -1 and len(world_ids) < 10:
-                    start_index += len(world_id_start_str)  # start after "wrld_"
-                    end_index = start_index
-                    while end_index < len(utf8_data):
-                        char = utf8_data[end_index]
-                        # Detect if we hit a character that's not part of the world_id
-                        if not char.isalnum() and char != "-":
-                            break
-                        end_index += 1
-                    # 🎉 Found world ID 🎉
-                    world_id = world_id_start_str + utf8_data[start_index:end_index]
-                    world_ids.append(world_id)
-                    # Look for the next occurrence
-                    start_index = utf8_data.find(world_id_start_str, end_index)
+                # Find all matches of the pattern
+                world_ids = world_id_pattern.findall(utf8_data)
 
-                if world_ids:
-                    # Return the longest world ID found
-                    return max(world_ids, key=len)
-                return None
+                return world_ids
+
         except Exception as e:
-            self.handle_error(str(e))
-            return None
+            # Log or handle errors as needed
+            print(f"An error occurred: {e}")
+            return []
+
+    def search_hex_data_for_string(self, assetbundle_path, search_string):
+        try:
+            with open(assetbundle_path, "rb") as f:
+                data = f.read()
+                utf8_data = data.decode("utf-8", "ignore")
+
+                # Find all matches of the pattern
+                matches = re.findall(search_string, utf8_data)
+
+                return matches
+
+        except Exception as e:
+            # Log or handle errors as needed
+            print(f"An error occurred: {e}")
+            return []
 
     def prompt_for_world_url(self):
         while True:
-            url, ok = QInputDialog.getText(self, "Manual World URL", "Something went wrong while automatically detecting the world ID. Please enter the world URL or ID:")
+            url, ok = QInputDialog.getText(
+                self,
+                "Manual World URL",
+                "Something went wrong while automatically detecting the world ID. Please enter the world URL or ID:",
+            )
             if not ok:
                 print("User cancelled the input dialog.")
                 return None
@@ -744,9 +842,15 @@ class QtGUIManager(QWidget):
             if extracted_id:
                 print(f"Returning extracted ID: {extracted_id}")
                 return extracted_id
-            QMessageBox.warning(self, "Invalid Input", "The input provided is not a valid VRChat world URL or ID. Please try again.")
+            QMessageBox.warning(
+                self,
+                "Invalid Input",
+                "The input provided is not a valid VRChat world URL or ID. Please try again.",
+            )
 
-    def copy_asset_bundle(self, assetbundle_path, world_info):  # Copies the asset bundle to a folder named after the world
+    def copy_asset_bundle(
+        self, assetbundle_path, world_info
+    ):  # Copies the asset bundle to a folder named after the world
         try:
             asset_bundle_manager = AssetBundleManager()
             world_name = world_info["World Name"]
@@ -783,9 +887,9 @@ class QtGUIManager(QWidget):
             print(f"Exception occurred: {str(e)}")
             raise
 
-    def discover_existing_cache(self): # This goes through and attempts to discover worlds through the existing cache
-        
-        self.unknown_worlds = 0 # Reset the unknown worlds count
+    def discover_existing_cache(self):
+        # This function attempts to discover worlds through the existing cache
+        self.unknown_worlds = 0  # Reset the unknown worlds count
         self.update_status_label("Discovering existing cache data...")
 
         def worker():
@@ -797,41 +901,118 @@ class QtGUIManager(QWidget):
                             data_files.append(os.path.join(root, file))
                 print(f"Discovered {len(data_files)} '__data' files.")
 
-                new_worlds = []
                 for data_file in data_files:
-                    world_id = self.search_hex_data_for_world_id(data_file)
-                    if world_id and not self.record_manager.record_exists(world_id):
-                        print(f"Discovered new world ID: {world_id}")
-                        world_JSON = self.api_manager.get_world_from_id(world_id)
-                        world_info = self.api_manager.get_legacy_format_world_info(world_JSON)
-                        if not world_info:
-                            self.unknown_worlds += 1
-                            continue
+                    world_ids = self.search_hex_data_for_world_id(data_file)
+                    if not world_ids:
+                        print("No valid world ID found in the asset bundle.")
+                        continue
 
-                        self.store_world_info(self.record_manager, world_info)
-                        self.copy_asset_bundle(data_file, world_info)
+                    # Check if any of the world IDs are already stored in the records and not marked as ambiguous
+                    worlds_record = self.record_manager.read_record("Worlds") or []
+                    existing_world_ids = [
+                        world["World ID"]
+                        for world in worlds_record
+                        if world["World ID"] in world_ids and not world.get("Ambiguous", False)
+                    ]
+                    if existing_world_ids:
+                        print(f"World ID(s) {existing_world_ids} already exist in records and are not ambiguous. Skipping processing.")
+                        continue
 
-                        new_worlds.append(world_info)
+                    world_JSONs = []
+                    is_ambiguous = len(world_ids) > 1
+                    for world_id in world_ids:
+                        if not self.record_manager.record_exists(world_id):
+                            print(f"Discovered new world ID: {world_id}")
+                            world_JSON = self.api_manager.get_world_from_id(world_id)
+                            print(f"World JSON: {world_JSON}")  # debug
+                            world_JSONs.append(world_JSON)
+                            world_info = self.api_manager.get_legacy_format_world_info(
+                                world_JSON, is_ambiguous
+                            )
+                            if not world_info:
+                                self.unknown_worlds += 1
+                                continue
 
-                self.add_worlds_signal.emit(new_worlds)
+                            if is_ambiguous:
+                                disambiguated_world_id = self.try_disambiguate_worlds(
+                                    world_JSONs, data_file
+                                )
+                                if disambiguated_world_id:
+                                    world_id = disambiguated_world_id
+                                    is_ambiguous = False
+                                    world_JSON = self.api_manager.get_world_from_id(
+                                        world_id
+                                    )
+                                    world_info = (
+                                        self.api_manager.get_legacy_format_world_info(
+                                            world_JSON, is_ambiguous
+                                        )
+                                    )
+                                    if not world_info:
+                                        self.unknown_worlds += 1
+                                        continue
+                                else:
+                                    # Add all ambiguous worlds if disambiguation fails
+                                    for ambiguous_world_JSON in world_JSONs:
+                                        ambiguous_world_info = self.api_manager.get_legacy_format_world_info(
+                                            ambiguous_world_JSON, True
+                                        )
+                                        if (
+                                            ambiguous_world_info
+                                            and not self.record_manager.record_exists(
+                                                ambiguous_world_info["World ID"]
+                                            )
+                                        ):
+                                            self.store_world_info(
+                                                self.record_manager,
+                                                ambiguous_world_info,
+                                            )
+                                            self.copy_asset_bundle(
+                                                data_file, ambiguous_world_info
+                                            )
+                                            self.add_worlds_signal.emit(
+                                                [ambiguous_world_info]
+                                            )
+                                    continue  # Skip adding ambiguous worlds if disambiguation fails
+
+                            if not self.record_manager.record_exists(
+                                world_info["World ID"]
+                            ):
+                                self.store_world_info(self.record_manager, world_info)
+                                self.copy_asset_bundle(data_file, world_info)
+                                # Emit signal for each world being added
+                                self.add_worlds_signal.emit([world_info])
+                            break
+
                 self.update_status_label_signal.emit("Idle")
             except Exception as e:
                 self.handle_error(str(e))
+
         threading.Thread(target=worker).start()
 
     @pyqtSlot(list)
     def add_worlds_to_list(self, new_worlds):
         try:
             for world_info in new_worlds:
-                thumbnail_path = world_info.get("Thumbnail Path", "./resources/default_thumbnail.png")
+                thumbnail_path = world_info.get(
+                    "Thumbnail Path", "./resources/default_thumbnail.png"
+                )
                 world_name = world_info.get("World Name", "Unknown")
                 world_author = world_info.get("World Author", "Unknown")
                 world_id = world_info.get("World ID", "Unknown ID")
+                is_ambiguous = world_info.get("Ambiguous", False)
 
-                list_item_widget = ListItemWidget(thumbnail_path, world_name, world_author, world_id)
-                list_item = QListWidgetItem()
+                list_item_widget = ListItemWidget(
+                    thumbnail_path,
+                    world_name,
+                    world_author,
+                    world_id,
+                    parent=self,  # Explicitly set the parent
+                    is_ambiguous=is_ambiguous,  # Pass is_ambiguous as a keyword argument
+                )
+
+                list_item = QListWidgetItem(self.file_list)
                 list_item.setSizeHint(list_item_widget.sizeHint())
-
                 list_item.world_id = world_id
 
                 self.file_list.addItem(list_item)
@@ -848,15 +1029,20 @@ class QtGUIManager(QWidget):
         except Exception as e:
             self.handle_error(str(e))
             raise
-    
+
     # These two functions should be used together to store world info in the records
-    def store_world_info(self, record_manager, world_info): # Stores world info in the records
+    def store_world_info(
+        self, record_manager, world_info
+    ):  # Stores world info in the records
         try:
             record_manager.add_record("Worlds", world_info)
         except Exception as e:
             self.handle_error(str(e))
             raise
-    def copy_asset_bundle(self, assetbundle_path, world_info): # Copies the asset bundle to the assetbundles directory
+
+    def copy_asset_bundle(
+        self, assetbundle_path, world_info
+    ):  # Copies the asset bundle to the assetbundles directory
         try:
             asset_bundle_manager = AssetBundleManager()
             world_name = world_info["World Name"]
@@ -868,57 +1054,102 @@ class QtGUIManager(QWidget):
         except Exception as e:
             self.handle_error(str(e))
             raise
-    
+
     def process_new_world_path(self, path, newly_downloaded=False):
-        # path is the path to the assetbundle in the VRChat Cache
-        # This is the main function to processing and storing records. All other functions should be called from here
-        
-        world_id = None # ID of the VRCW (wrld_...)
-        world_JSON = None # JSON data from the VRChat API
-        world_info = None # This is our own format for storing world info
-        
-        # Get the world ID from the assetbundle
-        world_id = self.search_hex_data_for_world_id(path)
-        if len(str(world_id)) < 35:
-            print(f"World ID: {world_id}")
-            print("Seemingly invalid world ID, skipping...")
-            return
-        
-        # Get the world JSON from the VRChat API
-        world_JSON = self.api_manager.get_world_from_id(world_id)
-        if not world_JSON:
-            if newly_downloaded:
-                print("Failed to get world JSON, likely invalid. Prompting for world URL...")
-                world_id = self.prompt_for_world_url()
-                if not world_id:
-                    print("User cancelled, skipping...")
-                    return
-                world_JSON = self.api_manager.get_world_from_id(world_id)
-                if not world_JSON:
-                    print("This world is fucked. Sorry. There should be no way to get here.")
-                    return
-        
-        # Get the world info in our own format
-        world_info = self.api_manager.get_legacy_format_world_info(world_JSON)
-        if not world_info:
-            print("Failed to get world info, skipping...")
-            return
-        
-        # Check if the world ID is already stored in the record manager
-        if self.record_manager.record_exists(world_id):
-            print(f"World ID {world_id} already exists in the records, skipping...")
+        world_ids = self.search_hex_data_for_world_id(path)
+        if not world_ids:
+            print("Failed to get world ID, skipping...")
             return
 
-        # Store the world info in the records (uses world_info)
-        self.store_world_info(self.record_manager, world_info)
-        
-        # Copy the assetbundle to the assetbundles directory (uses assetbundle_path and world_info)
-        self.copy_asset_bundle(path, world_info)
-        
-        print("If you see this message, the world has been processed successfully.")
-        
-        self.reload_list()
-    
+        world_JSONs = []
+        for world_id in world_ids:
+            world_JSON = self.api_manager.get_world_from_id(world_id)
+            if world_JSON:
+                world_JSONs.append(world_JSON)
+
+        is_ambiguous = len(world_ids) > 1
+        if is_ambiguous:
+            world_names = [
+                getattr(world_JSON, "name", "Unknown") for world_JSON in world_JSONs
+            ]
+            world_name, ok = QInputDialog.getItem(
+                self,
+                "Disambiguate World",
+                "Multiple worlds found. Please select the correct world:",
+                world_names,
+                0,
+                False,
+            )
+            if ok and world_name:
+                selected_world_JSON = next(
+                    (
+                        world_JSON
+                        for world_JSON in world_JSONs
+                        if world_JSON.name == world_name
+                    ),
+                    None,
+                )
+                if selected_world_JSON:
+                    world_id = selected_world_JSON.id
+                    if not self.record_manager.record_exists(world_id):
+                        world_info = self.api_manager.get_legacy_format_world_info(
+                            selected_world_JSON, False
+                        )
+                        if not world_info:
+                            print(
+                                "Failed to get world info from user selection, skipping..."
+                            )
+                            return
+                        self.store_world_info(self.record_manager, world_info)
+                        self.copy_asset_bundle(path, world_info)
+                        self.add_worlds_signal.emit(
+                            [world_info]
+                        )  # Emit signal to update the list
+                    else:
+                        print(
+                            f"World ID {world_id} already exists in the records. Skipping duplicate addition."
+                        )
+                else:
+                    print("Selected world not found in list; skipping...")
+            else:
+                print("User canceled disambiguation selection; skipping...")
+            return  # End process, no need to execute further logic.
+
+        # Single world case handling:
+        for world_JSON in world_JSONs:
+            world_id = world_JSON.id
+            if not self.record_manager.record_exists(world_id):
+                world_info = self.api_manager.get_legacy_format_world_info(
+                    world_JSON, False
+                )
+                if world_info:
+                    self.store_world_info(self.record_manager, world_info)
+                    self.copy_asset_bundle(path, world_info)
+                    self.add_worlds_signal.emit(
+                        [world_info]
+                    )  # Emit signal to update the list
+                break
+
+    def try_disambiguate_worlds(
+        self, world_JSONs, assetbundle_path
+    ):  # Attempts to disambiguate worlds by checking to see if the world name is present in the assetbundle
+        correct_world_id = None  # This is set if we find a match
+        name_chars_length = 8  # Number of chars to test for
+        for world_JSON in world_JSONs:
+            print(f"world_JSON type: {type(world_JSON)}")  # Debugging line
+            world_name = str(world_JSON.name)
+            print(f"Checking world name: {world_name}")  # Debugging line
+            matches = self.search_hex_data_for_string(
+                assetbundle_path, world_name[:name_chars_length]
+            )
+            print(f"Matches found: {matches}")  # Debugging line
+            if matches:
+                correct_world_id = world_JSON.id
+                print(f"Found a match! World ID: {correct_world_id}")  # Debugging line
+                break
+        print(f"Returning correct_world_id: {correct_world_id}")  # Debugging line
+        return correct_world_id
+
     # Attempted automatic path detection for the VRChat cache / executable
     def attempt_auto_detect_paths(self, path):
         try:
@@ -950,20 +1181,35 @@ class QtGUIManager(QWidget):
                             print("Auto-detected VRChat executable path.")
                             break
                     else:
-                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat executable path.")
+                        QMessageBox.warning(
+                            self,
+                            "Auto-detection failed",
+                            "Could not auto-detect VRChat executable path.",
+                        )
 
                 elif path == "cache":
                     print("Attempting to auto-detect VRChat cache path...")
                     # Attempt to find the VRChat cache path
                     possible_cache_paths = [
                         os.path.join(
-                            os.environ["LOCALAPPDATA"], "VRChat", "VRChat", "Cache-WindowsPlayer"
+                            os.environ["LOCALAPPDATA"],
+                            "VRChat",
+                            "VRChat",
+                            "Cache-WindowsPlayer",
                         ),
                         os.path.join(
-                            os.getenv("APPDATA"), "VRChat", "VRChat", "Cache-WindowsPlayer"
+                            os.getenv("APPDATA"),
+                            "VRChat",
+                            "VRChat",
+                            "Cache-WindowsPlayer",
                         ),
                         os.path.join(
-                            os.environ["USERPROFILE"], "AppData", "LocalLow", "VRChat", "VRChat", "Cache-WindowsPlayer"
+                            os.environ["USERPROFILE"],
+                            "AppData",
+                            "LocalLow",
+                            "VRChat",
+                            "VRChat",
+                            "Cache-WindowsPlayer",
                         ),
                     ]
                     for cache_path in possible_cache_paths:
@@ -974,7 +1220,11 @@ class QtGUIManager(QWidget):
                             print("Auto-detected VRChat cache path.")
                             break
                     else:
-                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat cache path.")
+                        QMessageBox.warning(
+                            self,
+                            "Auto-detection failed",
+                            "Could not auto-detect VRChat cache path.",
+                        )
             elif sys.platform == "linux":
                 user_home = os.path.expanduser("~")
                 if path == "exe":
@@ -1007,7 +1257,11 @@ class QtGUIManager(QWidget):
                             print("Auto-detected VRChat executable path.")
                             break
                     else:
-                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat executable path.")
+                        QMessageBox.warning(
+                            self,
+                            "Auto-detection failed",
+                            "Could not auto-detect VRChat executable path.",
+                        )
 
                 elif path == "cache":
                     print("Attempting to auto-detect VRChat cache path...")
@@ -1040,7 +1294,11 @@ class QtGUIManager(QWidget):
                             print("Auto-detected VRChat cache path.")
                             break
                     else:
-                        QMessageBox.warning(self, "Auto-detection failed", "Could not auto-detect VRChat cache path.")
+                        QMessageBox.warning(
+                            self,
+                            "Auto-detection failed",
+                            "Could not auto-detect VRChat cache path.",
+                        )
             else:
                 QMessageBox.warning(
                     self,
@@ -1052,11 +1310,11 @@ class QtGUIManager(QWidget):
 
 
 # if __name__ == "__main__":
-    # Debugging only
-    # qapplication = QApplication(sys.argv)
-    # qt_gui_manager = QtGUIManager()
-    # assetbundle_test_path = (
-    #     "C:\\Users\\Neon\\Documents\\GitHub\\VRCacheManager\\assetbundles\\__data"
-    # )
-    # qt_gui_manager.show()
-    # sys.exit(qapplication.exec())
+# Debugging only
+# qapplication = QApplication(sys.argv)
+# qt_gui_manager = QtGUIManager()
+# assetbundle_test_path = (
+#     "C:\\Users\\Neon\\Documents\\GitHub\\VRCacheManager\\assetbundles\\__data"
+# )
+# qt_gui_manager.show()
+# sys.exit(qapplication.exec())

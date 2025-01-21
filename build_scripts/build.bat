@@ -17,7 +17,7 @@ set OUTPUT_DIR=%~dp0..\dist
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 
 set EXECUTABLE_NAME=%EXECUTABLE_NAME%
-if "%EXECUTABLE_NAME%"=="" set EXECUTABLE_NAME=VRCM.exe
+if "%EXECUTABLE_NAME%"=="" set EXECUTABLE_NAME=VRCM
 
 set ZIP_NAME=%ZIP_NAME%
 if "%ZIP_NAME%"=="" set ZIP_NAME=VRCM_%VERSION%.zip
@@ -35,10 +35,10 @@ if not exist %SCRIPT_PATH% (
     exit /b 1
 )
 
-pyinstaller -F --icon=%ICON_PATH% --noconsole --name=%EXECUTABLE_NAME:~0,-4% --distpath %OUTPUT_DIR% %SCRIPT_PATH%
+pyinstaller --onedir --icon=%ICON_PATH% --name=%EXECUTABLE_NAME% --distpath %OUTPUT_DIR% %SCRIPT_PATH% --noconsole
 
-if not exist "%OUTPUT_DIR%\%EXECUTABLE_NAME%" (
-    echo File '%EXECUTABLE_NAME%' does not exist.
+if not exist "%OUTPUT_DIR%\%EXECUTABLE_NAME%\%EXECUTABLE_NAME%.exe" (
+    echo Executable file does not exist.
     pause
     exit /b 1
 )
@@ -49,14 +49,19 @@ if not exist "..\resources" (
     exit /b 1
 )
 
-xcopy "..\resources" "resources" /E /I /Y
+xcopy "..\resources" "%OUTPUT_DIR%\%EXECUTABLE_NAME%\resources" /E /I /Y
 
-7z a %ZIP_NAME% %EXECUTABLE_NAME% resources
+cd %OUTPUT_DIR%
+7z a %ZIP_NAME% "%EXECUTABLE_NAME%"
 
-@REM cleanup
+@REM Enhanced cleanup section
+cd %OUTPUT_DIR%
+if exist "%EXECUTABLE_NAME%" (
+    attrib -r -s -h "%EXECUTABLE_NAME%\*" /S /D
+    rd /s /q "%EXECUTABLE_NAME%"
+)
+
 if exist "%OUTPUT_DIR%\build" rd /s /q "%OUTPUT_DIR%\build"
-if exist "%OUTPUT_DIR%\%EXECUTABLE_NAME%" del /q "%OUTPUT_DIR%\%EXECUTABLE_NAME%"
-if exist "%OUTPUT_DIR%\VRCM.spec" del /q "%OUTPUT_DIR%\VRCM.spec"
-if exist %OUTPUT_DIR%\resources rd /s /q %OUTPUT_DIR%\resources
+if exist "%OUTPUT_DIR%\%EXECUTABLE_NAME%.spec" del /q "%OUTPUT_DIR%\%EXECUTABLE_NAME%.spec"
 
 pause

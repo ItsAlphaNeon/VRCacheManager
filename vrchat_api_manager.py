@@ -73,8 +73,7 @@ class VRChatAPIManager(QObject):
             print("Exception when calling API: %s\n", e)
             return None
         
-    def get_legacy_format_world_info(self, world_JSON):
-        print("get_legacy_format_world_info: "+ str(world_JSON)) # debug, will remove later
+    def get_legacy_format_world_info(self, world_JSON, ambiguous=False):
         try:
             if not world_JSON.id:
                 # This is not a valid world JSON
@@ -112,13 +111,14 @@ class VRChatAPIManager(QObject):
             "World Name": world_name,
             "World Description": world_description,
             "World Author": world_author,
-            "Thumbnail Path": thumbnail_path
+            "Thumbnail Path": thumbnail_path,
+            "Ambiguous": ambiguous
         }
 
-# if __name__ == "__main__":
-#     api_manager = VRChatAPIManager()
-#     api_manager.authenticate(None, None, "vrc@freevrc.com")
-#     worldid = 'wrld_2dddec3a-f471-4c7e-ab39-00ab9ce427c7'
-#     worldJSON = api_manager.get_world_from_id(worldid)
-#     print("get_world_from_id: "+ str(worldJSON))
-#     print("get_legacy_format_world_info: " + str(api_manager.get_legacy_format_world_info(worldJSON)))
+if __name__ == "__main__":
+    api_manager = VRChatAPIManager()
+    api_manager.authenticate(None, None, "vrc@freevrc.com")
+    worldid = 'wrld_aaa71bef-ff49-459a-bb4e-4e845e724f1d'
+    worldJSON = api_manager.get_world_from_id(worldid)
+    print("get_world_from_id: "+ str(worldJSON))
+    print("get_legacy_format_world_info: " + str(api_manager.get_legacy_format_world_info(worldJSON)))
