@@ -1,3 +1,5 @@
+# VRChat now has encrypted cache. This means no more archiving and revisiting of worlds. This project is now discontinued until further notice.
+
 # VRCacheManager
 
 VRCacheManager is a tool designed to manage VRChat cache files, allowing you to rename, delete, view information, and replace the ErrorWorld. 
